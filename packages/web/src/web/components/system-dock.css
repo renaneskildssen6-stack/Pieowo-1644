@@ -1,0 +1,79 @@
+/* Dock da cidade: barra rápida compacta + chips + central de sistemas em abas. */
+.mc-dock{position:absolute;inset:0;z-index:7;pointer-events:none;font-family:'Silkscreen',monospace}
+.mc-dock.is-open{z-index:36}
+.mc-dock>*{pointer-events:auto}
+.mc-dock button{font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.mc-dock button:disabled{cursor:default}
+
+/* ---------- barra rápida ---------- */
+.mc-dock-rail{position:absolute;top:8px;left:8px;display:flex;align-items:stretch;gap:3px;padding:3px;background:linear-gradient(180deg,#0a1f2ef2,#050f19f2);border:2px solid #0f3a4c;box-shadow:0 0 0 1px #000,inset 0 1px 0 #35e2f033,0 6px 16px #0008;max-width:calc(100% - 126px)}
+.mc-dock-tile{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;width:44px;height:42px;padding:3px 2px 2px;border:1px solid #1c4a5c;background:linear-gradient(180deg,#123247,#0a1d2b);color:#bfe7f2;box-shadow:inset 0 -2px 0 #02090f;transition:transform 80ms steps(2),border-color 80ms}
+.mc-dock-tile img{width:24px;height:24px;object-fit:contain;image-rendering:pixelated;filter:drop-shadow(0 1px 0 #000)}
+.mc-dock-tile span{font-size:6px;line-height:1;letter-spacing:.04em;white-space:nowrap;text-shadow:1px 1px 0 #000}
+.mc-dock-tile:hover:not(:disabled){border-color:#35e2f0;color:#fff;transform:translateY(-1px)}
+.mc-dock-tile:active:not(:disabled){transform:translateY(1px);box-shadow:inset 0 2px 0 #02090f}
+.mc-dock-tile:disabled{opacity:.45;filter:grayscale(.6)}
+.mc-dock-tile.is-story{border-color:#8a6418;background:linear-gradient(180deg,#3a2a0c,#1d1406);color:#ffd27a}
+.mc-dock-tile.is-story::after{content:"";position:absolute;top:2px;right:2px;width:4px;height:4px;background:#ffb21a;box-shadow:0 0 5px #ffb21a;animation:mc-dock-ping 1.6s steps(2) infinite}
+.mc-dock-sep{width:2px;margin:3px 1px;background:repeating-linear-gradient(#35e2f055 0 2px,transparent 2px 4px)}
+.mc-dock-tile.is-all{width:52px;border-color:#2c6c80;background:linear-gradient(180deg,#17465d,#0b2433);color:#e8fbff}
+.mc-dock-tile.is-all[aria-expanded=true]{border-color:#ffd27a;background:linear-gradient(180deg,#3d3315,#1a1508);color:#ffe7a8}
+.mc-dock-tile em{position:absolute;top:-4px;right:-4px;min-width:13px;height:13px;padding:0 2px;display:grid;place-items:center;background:#35e2f0;color:#04121c;font:6px/1 'Silkscreen',monospace;font-style:normal;border:1px solid #000}
+.mc-dock-burger{display:grid;gap:3px;width:18px;height:24px;align-content:center}
+.mc-dock-burger b{display:block;height:3px;background:currentColor;box-shadow:1px 1px 0 #000}
+.mc-dock-burger b:nth-child(2){width:70%}
+
+/* ---------- chips secundários ---------- */
+.mc-dock-chips{position:absolute;top:60px;left:8px;display:flex;gap:4px}
+.mc-dock-chip{display:flex;align-items:center;gap:5px;height:22px;padding:0 8px 0 4px;border:1px solid #2a6274;background:#071a28ee;color:#cdeff8;font-size:6px;letter-spacing:.05em;box-shadow:0 0 0 1px #000,0 3px 8px #0007;text-shadow:1px 1px 0 #000}
+.mc-dock-chip img{width:16px;height:16px;object-fit:contain;image-rendering:pixelated}
+.mc-dock-chip:hover:not(:disabled){border-color:#6de6ef;color:#fff}
+.mc-dock-chip.is-myth{border-color:#8f3b7d;background:linear-gradient(90deg,#24092ced,#12061eed);color:#ffd86a}
+.mc-dock-chip.is-myth:hover:not(:disabled){border-color:#ff5cd6}
+.mc-dock-chip:disabled{opacity:.5}
+.mc-dock-chip:disabled .pt-sheet{filter:grayscale(1);animation-play-state:paused}
+
+/* ---------- central de sistemas ---------- */
+.mc-dock-backdrop{position:absolute;inset:0;display:grid;place-items:center;padding:12px;background:#01060bb8;backdrop-filter:blur(3px);animation:mc-dock-fade .14s ease-out}
+.mc-dock-panel{width:min(420px,100%);max-height:min(640px,calc(100% - 24px));display:flex;flex-direction:column;background:linear-gradient(180deg,#081c2b,#040d16);border:2px solid #35e2f0;box-shadow:0 0 0 2px #000,0 0 0 4px #0f3a4c,0 20px 50px #000c,0 0 30px #35e2f022;animation:mc-dock-rise .18s steps(4)}
+.mc-dock-panel>header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;background:repeating-linear-gradient(90deg,#0e2c3e 0 2px,#0b2433 2px 4px);border-bottom:2px solid #000}
+.mc-dock-panel>header small{display:block;font-size:6px;letter-spacing:.2em;color:#6fb5c7}
+.mc-dock-panel>header strong{display:block;margin:4px 0 2px;font:10px 'Press Start 2P',monospace;color:#ffe19b;text-shadow:2px 2px 0 #000}
+.mc-dock-panel>header span{font-size:7px;color:#9fd8e4}
+.mc-dock-x{width:28px;height:28px;flex-shrink:0;border:1px solid #6a4e22;background:#22180b;color:#ffd68a;font:14px/1 monospace;box-shadow:inset 0 -2px 0 #000}
+.mc-dock-x:hover{border-color:#ffd68a;color:#fff}
+.mc-dock-tabs{display:flex;gap:3px;padding:7px 10px;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid #12384a;background:#051320}
+.mc-dock-tabs button{flex-shrink:0;padding:6px 8px;border:1px solid #1d4556;background:#0a1d2b;color:#86b4c3;font-size:6px;letter-spacing:.08em}
+.mc-dock-tabs button[aria-selected=true]{border-color:var(--tone);color:#04121c;background:var(--tone);text-shadow:none}
+.mc-dock-tabs button:hover:not([aria-selected=true]){color:var(--tone);border-color:var(--tone)}
+.mc-dock-scroll{flex:1;overflow:auto;padding:4px 10px 10px;scrollbar-width:thin;scrollbar-color:#35e2f055 transparent}
+.mc-dock-group{margin-top:8px}
+.mc-dock-group h3{display:flex;align-items:baseline;gap:7px;margin:0 0 6px;padding:0 0 4px 7px;border-left:3px solid var(--tone);border-bottom:1px dashed #1d4556}
+.mc-dock-group h3 b{font:7px 'Press Start 2P',monospace;color:var(--tone);text-shadow:1px 1px 0 #000}
+.mc-dock-group h3 span{font-size:6px;color:#6d9cab;letter-spacing:.1em}
+.mc-dock-group h3 em{margin-left:auto;font-size:6px;font-style:normal;color:#9fd8e4}
+.mc-dock-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.mc-dock-card{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0;padding:6px 4px 6px;border:1px solid #1d4556;background:linear-gradient(180deg,#0d2638,#071623);color:#e2f7fd;text-align:center;box-shadow:inset 0 -2px 0 #02090f;transition:transform 80ms steps(2)}
+.mc-dock-card::before{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:var(--tone);opacity:.55}
+.mc-dock-icon{display:grid;place-items:center;width:38px;height:34px;background:radial-gradient(circle at 50% 60%,color-mix(in srgb,var(--tone) 22%,transparent),transparent 70%)}
+.mc-dock-icon img{max-width:38px;max-height:34px;object-fit:contain;image-rendering:pixelated;filter:drop-shadow(0 2px 0 #000)}
+.mc-dock-card strong{font-size:7px;line-height:1.2;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-shadow:1px 1px 0 #000}
+.mc-dock-card small{font:5px/1.3 'Silkscreen',monospace;color:#7fb0bf;letter-spacing:.04em;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mc-dock-card:hover:not(:disabled){border-color:var(--tone);transform:translateY(-1px);background:linear-gradient(180deg,#143349,#0a1d2b)}
+.mc-dock-card:active:not(:disabled){transform:translateY(1px)}
+.mc-dock-card.is-locked{opacity:.55;background:#060f17}
+.mc-dock-card.is-locked img{filter:grayscale(1) brightness(.55)}
+.mc-dock-card.is-locked::before{background:#3a4a52}
+.mc-dock-card.is-locked small{color:#c89a52}
+.mc-dock-lock{position:absolute;top:3px;right:3px;padding:2px 3px;background:#2a1e0c;border:1px solid #6a4e22;color:#ffd68a;font:5px/1 'Silkscreen',monospace;font-style:normal}
+.mc-dock-panel>footer{padding:8px 12px 10px;border-top:2px solid #000;background:#051320;font-size:6px;color:#91bccb;letter-spacing:.05em}
+.mc-dock-panel>footer b{color:#ffd27a;font-weight:normal}
+.mc-dock-panel>footer i{display:block;height:4px;margin-top:6px;background:#0d2a3a;border:1px solid #000}
+.mc-dock-panel>footer u{display:block;height:100%;background:repeating-linear-gradient(90deg,#35e2f0 0 4px,#1fb3c4 4px 6px);text-decoration:none}
+
+@keyframes mc-dock-ping{50%{opacity:.2}}
+@keyframes mc-dock-fade{from{opacity:0}}
+@keyframes mc-dock-rise{from{transform:translateY(10px);opacity:0}}
+@media(prefers-reduced-motion:reduce){.mc-dock-tile.is-story::after,.mc-dock-backdrop,.mc-dock-panel{animation:none}}
+@media(max-width:370px){.mc-dock-tile{width:39px;height:38px}.mc-dock-tile img{width:21px;height:21px}.mc-dock-tile span{font-size:5px}.mc-dock-tile.is-all{width:46px}.mc-dock-chips{top:54px}.mc-dock-grid{gap:4px}.mc-dock-card small{display:none}}
+@media(min-width:560px){.mc-dock-grid{grid-template-columns:repeat(4,1fr)}.mc-dock-panel{width:min(520px,100%)}}

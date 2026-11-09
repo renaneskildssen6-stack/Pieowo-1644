@@ -1,0 +1,56 @@
+[
+ {
+  "i": "lupvexor",
+  "n": "LUPVEXOR",
+  "e": "MATILHA",
+  "r": "silver",
+  "l": "steel grey wolf mecha standing on digitigrade legs, a bristling mane of blade-quills, elongated snout with exposed piston fangs, glowing amber eyes",
+  "a": "pack fang lunge",
+  "f": "drain"
+ },
+ {
+  "i": "tigravox",
+  "n": "TIGRAVOX",
+  "e": "PRESA",
+  "r": "gold",
+  "l": "orange and black striped tiger mecha with retractable plasma claws, a heavy armored chest, whiskers of thin antennae, snarling metal jaw",
+  "a": "quad claw rend",
+  "f": "weakening"
+ },
+ {
+  "i": "ursagrind",
+  "n": "URSA GRIND",
+  "e": "URSO",
+  "r": "bronze",
+  "l": "massive brown bear mecha with shaggy cable fur, riveted shoulder pauldrons, enormous grinding paw drills, small red eye lenses",
+  "a": "grinding paw crush",
+  "f": "paralyze"
+ },
+ {
+  "i": "cornubrute",
+  "n": "CORNU BRUTE",
+  "e": "CHIFRE",
+  "r": "silver",
+  "l": "muscular bull mecha with two curved iron horns, a snorting steam nose vent, hoof pistons kicking up dust, plated hump back",
+  "a": "horn charge trample",
+  "f": "paralyze"
+ },
+ {
+  "i": "simiaslam",
+  "n": "SIMIA SLAM",
+  "e": "PRIMATA",
+  "r": "bronze",
+  "l": "broad-armed gorilla mecha with knuckle walker fists, a barrel chest with a glowing core, short legs, angry brow plate over green optics",
+  "a": "double fist ground slam",
+  "f": "damage_reduction"
+ },
+ {
+  "i": "draknoir",
+  "n": "DRAKNOIR",
+  "e": "DRAGAO",
+  "r": "gold",
+  "l": "black scaled dragon mecha with tattered metal wings, a long spiked tail, a furnace throat glowing orange, curved horns sweeping back",
+  "a": "furnace breath sweep",
+  "f": "burn"
+ }
+]
