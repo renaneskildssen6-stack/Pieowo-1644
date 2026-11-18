@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Frame, Panel, PixelButton, RobotSprite, StatBar } from "@/components/pixel";
 import { Icon } from "@/components/pixel";
 import { LoadoutEditor } from "@/components/loadout";
@@ -12,7 +12,7 @@ import { TeamWorkbench } from "@/components/team-workbench";
 import { RobotBust } from "@/components/robot-bust";
 import { ScreenBoundary } from "@/components/screen-boundary";
 import { isCustom } from "@/game/lab";
-import { faceUrl, portraitUrl, ROBOT_MAP, ROBOTS } from "@/game/robots";
+import { portraitUrl, ROBOT_MAP, ROBOTS } from "@/game/robots";
 
 const RARITY_GLOW: Record<string, string> = {
   bronze: "rgba(205,127,50,0.9)",
@@ -425,7 +425,7 @@ export function RobotDetail({ save, onClose }: { save: RobotSave; onClose: () =>
       <Panel style={{ width: "min(94vw, 420px)", maxHeight: "88vh", overflow: "hidden" }}>
         <div className="mk-scroll" style={{ maxHeight: "76vh", paddingRight: 4 }}>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <RobotSprite robotId={save.id} clip="idle" size={104} fps={4} skin={skinOfRobot(g, save.id)} />
+            <RosterHero robotId={save.id} sprite={<RobotSprite robotId={save.id} clip="idle" size={104} fps={4} skin={skinOfRobot(g, save.id)} />} />
             <div style={{ flex: 1 }}>
               <div className="mk-title" style={{ fontSize: 11 }}>
                 {def.name}
@@ -610,6 +610,18 @@ export function TopBar({
       <span className="mk-title" style={{ fontSize: 8, color: "var(--mk-accent2)" }}>
         <Icon name="coins" size={12} /> {gold}
       </span>
+    </div>
+  );
+}
+
+/** Retrato cinematográfico do robô selecionado: busto com máscara de fade; sem busto, volta ao sprite. */
+function RosterHero({ robotId, sprite }: { robotId: string; sprite: ReactNode }) {
+  const [ok, setOk] = useState(true);
+  if (!ok) return <>{sprite}</>;
+  return (
+    <div className="mc-roster-hero">
+      <img src={`/busts/${robotId}_bust.png`} alt="" onError={() => setOk(false)} />
+      <i aria-hidden />
     </div>
   );
 }

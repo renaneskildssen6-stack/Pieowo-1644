@@ -1,3 +1,5 @@
+import "./battle-cine.css";
+import "./battle-portrait.css";
 import { BattleCommands, preloadCommandArt } from "@/components/battle-commands";
 import { UltimateArenaEffect, preloadUltimateArt, type ArenaUltimate } from "@/components/ultimate-cinematic";
 import { Ground, Plinth, preloadFloorArt } from "@/components/arena-floor";
@@ -123,6 +125,9 @@ const POS_ABBR: Record<string, string> = {
   nucleo: "NUC",
 };
 
+/** Duplas: os dois primeiros robôs vivos estão em campo (mesma regra do motor). */
+const fieldPair = <T extends { hp: number }>(list: T[]): T[] => list.filter((f) => f.hp > 0).slice(0, 2);
+
 const STATUS_TONE: Record<string, string> = { buff: "#57d76a", debuff: "#ff5b4d" };
 
 export function BattleScreen({
@@ -138,8 +143,11 @@ export function BattleScreen({
   recordProgress = true,
   difficulty,
   remote,
+  doubles,
 }: {
   remote?: RemoteBattle;
+  /** Duplas 2v2: dois robôs de cada lado em campo. */
+  doubles?: boolean;
   arena: string;
   recordProgress?: boolean;
   difficulty?: import("@/game/battle").Difficulty;
@@ -158,7 +166,7 @@ export function BattleScreen({
 }) {
   const [battle, setBattle] = useState<Battle>(() => {
     if (remote) return remote.battle;
-    const b = createBattle({ arena, playerTeam, enemyTeam, items, difficulty });
+    const b = createBattle({ arena, playerTeam, enemyTeam, items, difficulty, doubles, mode: doubles ? "team" : undefined });
     if (startState) {
       for (const f of b.player.fighters) {
         const st = startState[f.robotId];
@@ -201,6 +209,9 @@ export function BattleScreen({
   const [targetUid, setTargetUid] = useState<string | null>(null);
   const [selSkill, setSelSkill] = useState<string | null>(null);
   const keyRef = useRef(0);
+  // Passe cinematográfico: hitstop no impacto e câmera lenta + K.O. no golpe final
+  const [hitstop, setHitstop] = useState<{ key: number; side: Side; heavy: boolean } | null>(null);
+  const [ko, setKo] = useState<{ key: number; side: Side; name: string } | null>(null);
 
   const busy = queue.length > 0;
   const combat = battle.combat;
@@ -208,6 +219,8 @@ export function BattleScreen({
   const eActive = useMemo(() => activeOf(battle, "enemy"), [battle.enemy.active, battle.enemy.fighters]);
   const pStage = useMemo(() => battle.player.fighters.find((f) => f.uid === stageActors.player) ?? pActive, [battle.player.fighters, stageActors.player, pActive]);
   const eStage = useMemo(() => battle.enemy.fighters.find((f) => f.uid === stageActors.enemy) ?? eActive, [battle.enemy.fighters, stageActors.enemy, eActive]);
+  const pPartner = combat.doubles ? fieldPair(battle.player.fighters).find((f) => f.uid !== pStage.uid) ?? null : null;
+  const ePartner = combat.doubles ? fieldPair(battle.enemy.fighters).find((f) => f.uid !== eStage.uid) ?? null : null;
   useEffect(() => {
     if (!busy) { setShot(null); setStageActors({}); }
   }, [busy]);
@@ -219,9 +232,9 @@ export function BattleScreen({
   const foeList = useMemo(
     () =>
       battle.enemy.fighters.filter(
-        (f) => f.hp > 0 && (reachSel || f.uid === battle.enemy.fighters[battle.enemy.active]?.uid),
+        (f) => f.hp > 0 && (reachSel || f.uid === battle.enemy.fighters[battle.enemy.active]?.uid || (!!combat.doubles && fieldPair(battle.enemy.fighters).includes(f))),
       ),
-    [battle.enemy.fighters, battle.enemy.active, reachSel],
+    [battle.enemy.fighters, battle.enemy.active, reachSel, combat.doubles],
   );
   const foeUid = targetUid && foeList.some((f) => f.uid === targetUid)
     ? targetUid
@@ -250,6 +263,13 @@ export function BattleScreen({
     return fc ? { tier: fc.tier, element: fc.element } : null;
   }, [combat, pActive.uid, finalSkill, foeUid, foeList]);
 
+  const [startCard, setStartCard] = useState(false);
+  useEffect(() => {
+    if (vs) return;
+    setStartCard(true);
+    const card = window.setTimeout(() => setStartCard(false), 1500);
+    return () => window.clearTimeout(card);
+  }, [vs]);
   useEffect(() => {
     if (vs) return;
     const id = window.setTimeout(() => {
@@ -339,7 +359,19 @@ export function BattleScreen({
       if (animSpec(ev.id)?.keyframe === "cinematic") setShot({ side: ev.side, kind: "power" });
       delay = ev.hold ?? 0;
     } else if (ev.t === "faint") {
-      delay = 620;
+      const rest = queue.slice(1);
+      const finalBlow = rest.find((n) => n.t === "end" || n.t === "order")?.t === "end";
+      const key = ++keyRef.current;
+      const fallen = battle[ev.side].fighters.find((f) => f.uid === ev.uid)?.name ?? "";
+      if (finalBlow) {
+        setShot({ side: ev.side, kind: "impact" });
+        setKo({ key, side: ev.side, name: fallen });
+        window.setTimeout(() => setKo((k) => k?.key === key ? null : k), 1900);
+        delay = 1650;
+      } else {
+        nextBanner("ABATIDO", fallen ? `${fallen} FORA DE COMBATE` : "FORA DE COMBATE", "#ff5a5a", false, 1000);
+        delay = 720;
+      }
     } else if (ev.t === "end") {
       setShot(null);
       delay = 500;
@@ -394,7 +426,10 @@ export function BattleScreen({
         tier: ev.tier,
       });
       window.setTimeout(() => setHitSeal((current) => current?.key === key ? null : current), 720);
-      delay = 180;
+      const heavy = ev.tier === "fraco" || ev.value >= 60;
+      setHitstop({ key, side: ev.side, heavy });
+      window.setTimeout(() => setHitstop((h) => h?.key === key ? null : h), heavy ? 150 : 90);
+      delay = heavy ? 260 : 180;
     }
     const id = window.setTimeout(() => setQueue((q) => q.slice(1)), delay);
     return () => window.clearTimeout(id);
@@ -486,7 +521,14 @@ export function BattleScreen({
   };
 
   return (
-    <div className="mk-battle" data-camera-fixed={!cameraEnabled}>
+    <div className="mk-battle" data-camera-fixed={!cameraEnabled} data-cine={!vs && busy && cameraEnabled ? "on" : undefined}
+      data-hitstop={hitstop ? (hitstop.heavy ? "heavy" : "light") : undefined} data-ko={ko ? ko.side : undefined}
+      data-start={startCard ? "on" : undefined} data-danger={!vs && pActive.hp > 0 && pActive.hp / Math.max(1, pActive.maxHp) < 0.25 ? "on" : undefined}>
+      {startCard && <div className="mk-cine-start" aria-hidden><small>{label}</small><b>ROUND {round ?? battle.turn}</b><em>LUTE!</em></div>}
+      <i className="mk-cine-danger" aria-hidden />
+      <i className="mk-cine-grade" aria-hidden />
+      <i className="mk-cine-bar is-top" aria-hidden /><i className="mk-cine-bar is-bottom" aria-hidden />
+      {ko && <div className="mk-cine-ko" key={ko.key} role="status"><b>K.O.</b><small>{ko.side === "enemy" ? "VITÓRIA À VISTA" : "SISTEMAS EM COLAPSO"}{ko.name ? ` · ${ko.name}` : ""}</small></div>}
 
       {/* Fase G3: camada de tela cheia (flashes, vinheta, barras, faixas) */}
       <ScreenFx anims={anims.filter((a) => a.spec.layer === "screen")} />
@@ -563,6 +605,10 @@ export function BattleScreen({
         </div>
         <div className="mk-battle-stage">
         <Ground arena={arena} />
+        {pPartner && <div className="mk-battle-fighter mk-battle-fighter-player mk-battle-partner" key={pPartner.uid}>
+          <Stage arena={arena} side="player" robotId={pPartner.robotId} size={size} reduced={reduced} clip="idle" flip={false} dim={false} shake={0} vfx={null} floats={[]} anims={[]} seal={null} />
+          <span className="mk-partner-tag"><b>{pPartner.name}</b><i style={{ width: `${Math.round(100 * pPartner.hp / pPartner.maxHp)}%` }} /></span>
+        </div>}
         <div className="mk-battle-fighter mk-battle-fighter-player">
         <Stage
           arena={arena}
@@ -581,6 +627,10 @@ export function BattleScreen({
           seal={hitSeal?.side === "player" ? hitSeal : null}
         />
         </div>
+        {ePartner && <div className="mk-battle-fighter mk-battle-fighter-enemy mk-battle-partner" key={ePartner.uid}>
+          <Stage arena={arena} side="enemy" robotId={ePartner.robotId} size={size} reduced={reduced} clip="idle" flip={true} dim={false} shake={0} vfx={null} floats={[]} anims={[]} seal={null} />
+          <span className="mk-partner-tag"><b>{ePartner.name}</b><i style={{ width: `${Math.round(100 * ePartner.hp / ePartner.maxHp)}%` }} /></span>
+        </div>}
         <div className="mk-battle-fighter mk-battle-fighter-enemy">
         <Stage
           arena={arena}

@@ -81,3 +81,10 @@
 .mk-battle[data-fit="true"] .mk-battle-stage{top:var(--mk-stage-top)!important;height:var(--mk-stage-h)!important}
 .mk-battle[data-fit="true"] .mk-battle-action{top:var(--mk-action-top)!important;padding:4px 12px!important;max-height:22px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;display:block!important}
 .mk-battle .mc-fighter-hud{filter:none!important;box-shadow:0 8px 12px #0008}
+/* Duplas 2v2: parceiro em campo, um passo atrás e acima do líder do turno */
+.mk-battle-partner { z-index:1; bottom:13%; transform:translateX(-50%) scale(.74); transform-origin:50% 100%; filter:brightness(.82) saturate(.9); pointer-events:none; }
+.mk-battle-fighter-player.mk-battle-partner { left:calc(var(--mk-player-x,24%) - 13%); }
+.mk-battle-fighter-enemy.mk-battle-partner { left:calc(var(--mk-enemy-x,76%) + 13%); }
+.mk-partner-tag { position:absolute; left:50%; top:-6px; transform:translateX(-50%); display:grid; gap:2px; min-width:70px; padding:2px 5px; background:#08111dd9; border:2px solid #35e2f0; font:700 9px/1.1 var(--mk-font-ui, monospace); color:#e8fbff; text-align:center; white-space:nowrap; }
+.mk-battle-fighter-enemy .mk-partner-tag { border-color:#ff5b4d; }
+.mk-partner-tag i { display:block; height:4px; background:#57d76a; box-shadow:inset 0 -1px #0005; }

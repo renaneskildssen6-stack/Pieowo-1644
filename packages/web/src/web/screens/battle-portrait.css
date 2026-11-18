@@ -1,0 +1,44 @@
+/* Celular em pé: mesma batalha, só reorganizada — HUD compacto, palco maior, comandos no polegar. */
+@media (orientation:portrait) and (max-width:760px){
+  .mk-battle-top{top:max(6px,env(safe-area-inset-top));left:6px;right:6px;gap:4px}
+  .mk-battle-hud{gap:6px!important;align-items:stretch}
+  .mk-battle-hud>*{max-width:none}
+  .mk-battle .mc-fighter-hud{display:flex!important;padding:7px 8px!important;gap:0!important;border-image-width:12px!important;filter:drop-shadow(0 4px 6px #0009);background:linear-gradient(180deg,#06101ee6,#040a14b8)!important}
+  .mk-battle .mc-hud-portrait,.mc-hud-eyebrow,.mc-hud-legacy-values,.mk-battle .mc-hud-zone{display:none!important}
+  .mc-hud-player .mc-hud-eyebrow,.mc-hud-player .mc-hud-name,.mc-hud-enemy .mc-hud-eyebrow,.mc-hud-enemy .mc-hud-name{margin:0!important}
+  .mk-battle .mc-hud-name{font:7px/1.35 'Silkscreen',monospace!important;min-height:0!important;margin-bottom:3px!important;gap:3px!important;flex-wrap:nowrap!important}
+  .mc-hud-name>span:first-child{white-space:nowrap!important;overflow:hidden;text-overflow:ellipsis;min-width:0}
+  .mc-hud-name>span:not(:first-child){font-size:5px!important;flex-shrink:0}
+  .mc-hud-vital{grid-template-columns:12px minmax(10px,1fr) auto!important;gap:3px!important;font-size:6px!important;margin-top:2px!important}
+  .mc-hud-vital>b{min-width:0!important;font-size:6px}.mc-hud-vital small{display:none}
+  .mc-hud-gauge{height:7px!important}
+  .mc-hud-mp .mc-hud-gauge{height:5px!important}
+  .mk-battle .mc-hud-resource{margin-top:3px!important}
+  .mk-battle .mc-hud-ultimate{font-size:5px!important;margin-top:3px!important;gap:4px!important}
+  .mk-battle .mc-hud-effects{font-size:5px!important;max-height:9px!important;overflow:hidden!important;white-space:nowrap;text-overflow:ellipsis;line-height:1.6!important}
+  .mc-hud-team{gap:2px!important;margin-top:3px!important}
+  .mc-hud-team img{width:12px!important;height:12px!important;border-image-width:2px!important}
+  .mk-battle-order{font-size:5px}
+  .mk-battle-order *{font-size:max(5px,min(1em,6px))!important}
+  .mk-battle-order>div{padding-top:3px!important;padding-bottom:3px!important}
+  .mk-battle-action{font-size:6px!important;padding:5px 10px!important}
+  .mk-battle-console{width:calc(100% - 8px)!important;bottom:calc(30px + env(safe-area-inset-bottom))!important;max-height:50%!important;padding:0!important}
+  .mk-battle-message{min-height:0!important;padding:6px 10px!important}
+  .mk-battle-message>div{font:8px/1.55 'Silkscreen',monospace!important;min-height:0!important}
+  .mc-commands{padding:6px 7px 7px!important}
+  .mc-command-heading{font-size:6px!important;margin-bottom:0!important}
+  .mc-command-heading small{display:none}
+  .mc-orb-tray{min-height:0!important;padding:4px 2px 2px!important;gap:6px!important}
+  .mc-orb-tray:has(>.mc-orb-hint:only-child){min-height:22px!important}
+  .mc-orb-hint{font-size:6px!important}
+  .mc-opt{width:66px!important}.mc-opt-orb{width:52px!important;height:52px!important}.mc-opt-orb>img{width:44px!important;height:44px!important}.mc-hold-ring{width:58px!important;height:58px!important}
+  .mc-orb-root{gap:2px!important;padding-top:6px!important}
+  .mc-cat{min-width:0!important;flex:1 1 0}
+  .mc-cat-orb{width:46px!important;height:46px!important}
+  .mc-cat-label{font-size:5px!important}
+  .mk-battle-camera,.mk-battle-camera+.mk-btn{bottom:calc(5px + env(safe-area-inset-bottom))!important;font-size:5px!important;padding:4px 7px!important;min-height:0!important;line-height:1.2!important;border-width:5px!important;border-image-width:6px!important;letter-spacing:0}
+  .mk-cine-bar{height:3.5%!important}
+  .mk-battle[data-ko] .mk-cine-bar{height:8%!important}
+  .mk-cine-ko b{font-size:clamp(46px,17vw,80px)!important}
+  .mk-battle-message{background:#071423ee!important}
+}

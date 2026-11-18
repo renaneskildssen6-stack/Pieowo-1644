@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from "react";
+import { IntroCutscene } from "@/components/intro-cutscene";
 import { GateProvider, useGate } from "@/components/gate";
 import { LoadingScreen, StudioSplash } from "@/components/entry-experience";
 import { ScreenBoundary } from "@/components/screen-boundary";
@@ -10,6 +11,7 @@ import "@/screens/pantheon.css";
 import "./city-evolution.css";
 import "@/screens/tutorial.css";
 import "./title-screen.css";
+import "./cinematic.css";
 
 // Game systems are split by screen: the title/download path does not pull the
 // battle, roster, city and tournament modules into its first JavaScript chunk.
@@ -80,6 +82,7 @@ export function GameShell() {
           {ready && !studioDone && <StudioSplash onDone={() => setStudioDone(true)} />}
           {ready && studioDone && !loaded && <LoadingScreen onDone={() => setLoaded(true)} />}
         </GateProvider>
+        <i className="mc-film-vignette" aria-hidden /><i className="mc-film" aria-hidden />
       </div>
     </div>
   );
@@ -87,7 +90,7 @@ export function GameShell() {
 
 function GameContent() {
   const [screen, setScreen] = useState<Screen>("menu");
-  const [entry, setEntry] = useState<"title" | "tutorial" | "home" | "city" | "online">("title");
+  const [entry, setEntry] = useState<"title" | "intro" | "tutorial" | "home" | "city" | "online">("title");
   const [practice, setPractice] = useState(false);
   const g = useGame();
   const { transition } = useGate();
@@ -101,7 +104,8 @@ function GameContent() {
     if (!replay) startTutorial();
     setEntry("tutorial");
   };
-  const play = () => g.tutorial.completed && g.robots.length ? setEntry("home") : beginTutorial();
+  const afterIntro = () => { const s = getState(); if (s.tutorial.completed && s.robots.length) setEntry("home"); else beginTutorial(); };
+  const play = () => setEntry("intro");
   const saveNote = g.robots.length
     ? `${g.robots.length} robôs · Piloto nível ${g.playerLevel} · progresso preservado`
     : "Sua jornada começa sem ouro, itens ou robôs. Aurorion espera por você no tutorial.";
@@ -157,6 +161,7 @@ function GameContent() {
       </section>
     </main>
   );
+  if (entry === "intro") return <IntroCutscene onDone={afterIntro} />;
   if (entry === "online") return (
     <Suspense fallback={<ScreenLoading />}>
       <ScreenBoundary exitLabel="VOLTAR AO TÍTULO" onExit={() => setEntry("title")}>
@@ -194,6 +199,8 @@ function GameContent() {
             }}
           >
             <div
+              key={screen}
+              className="mc-cine-screen"
               style={{
                 position: "relative",
                 width: "100%",

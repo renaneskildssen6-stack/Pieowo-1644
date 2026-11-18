@@ -2,6 +2,7 @@ import { Route, Switch } from "wouter";
 import Index from "./pages/index";
 import Gallery from "./pages/gallery";
 import AssetLibrary from "./pages/asset-library";
+import BattleTest from "./pages/battle-test";
 import { Provider } from "./components/provider";
 import { AgentFeedback, RunableBadge } from "@runablehq/website-runtime";
 import './gallery.css';
@@ -13,6 +14,7 @@ function App() {
       <Switch>
         <Route path="/galeria"><div className="gallery-surface"><Gallery /></div></Route>
         <Route path="/assets" component={AssetLibrary} />
+        {import.meta.env.DEV && <Route path="/battle-test" component={BattleTest} />}
         <Route path="/" component={Index} />
       </Switch>
       {/* Do not remove — off by default, activated by parent iframe via postMessage */}

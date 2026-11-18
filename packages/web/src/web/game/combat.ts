@@ -287,6 +287,10 @@ export interface Combat {
   pvp?: boolean;
   /** PvP: sal secreto do servidor para a sorte; removido antes de enviar ao cliente. */
   rngSalt?: number;
+  /** Duplas (2v2): dois robos de cada lado lutam ao mesmo tempo. */
+  doubles?: boolean;
+  /** Assentos controlados pela IA mesmo em PvP (vagas preenchidas por bots). */
+  botUids?: string[];
 }
 
 /** Visao consumida pelos ecras (superset do contrato antigo de `battle.ts`). */
@@ -512,8 +516,21 @@ function livingCount(c: Combat, side: Side): number {
 function fieldOf(c: Combat, side: Side): Combatant | null {
   const t = teamOf(c, side);
   const cur = t.fighters[t.active];
+  if (c.doubles) {
+    const list = fieldList(c, side);
+    return cur && list.includes(cur) ? cur : list[0] ?? null;
+  }
   if (cur && alive(cur)) return cur;
   return t.fighters.find(alive) ?? null;
+}
+/** Robos em campo: um no modo normal, os dois primeiros vivos nas Duplas. */
+export function fieldList(c: Combat, side: Side): Combatant[] {
+  if (!c.doubles) { const f = fieldOf(c, side); return f ? [f] : []; }
+  return teamOf(c, side).fighters.filter(alive).slice(0, 2);
+}
+/** Nas Duplas qualquer robo adversario em campo e alvo direto valido. */
+function inField(c: Combat, m: Combatant): boolean {
+  return !!c.doubles && fieldList(c, m.side).some(x => x.uid === m.uid);
 }
 
 /**
@@ -1909,7 +1926,7 @@ function executePlan(ctx: Ctx, m: Combatant, plan: TurnPlan): void {
       const vic =
         skill.kind === "defense"
           ? m
-          : plan.target && alive(plan.target) && (reach || plan.target.uid === foeOf(ctx, m).uid)
+          : plan.target && alive(plan.target) && plan.target.side !== m.side && (reach || plan.target.uid === foeOf(ctx, m).uid || inField(ctx.c, plan.target))
             ? plan.target
             : foeOf(ctx, m);
       if (skill.charge && skill.kind === "attack") {
@@ -2006,7 +2023,8 @@ function executePlan(ctx: Ctx, m: Combatant, plan: TurnPlan): void {
     }
     case "reposition": {
       const ally=plan.target;const team=teamOf(c,m.side);const idx=ally?team.fighters.indexOf(ally):-1;
-      if(ally&&alive(ally)&&idx>=0&&idx!==team.active){team.active=idx;msg(ctx,`${m.name} recua e ${ally.name} entra em campo!`);clipEv(ctx,m.side,"enter",ally.uid);animEv(ctx,m.side,"enter_teleport",0,ally.uid);orderEv(ctx);}
+      if(ally&&alive(ally)&&idx>=0&&c.doubles&&!inField(c,ally)){const mi=team.fighters.indexOf(m);team.fighters[mi]=ally;team.fighters[idx]=m;team.active=mi;msg(ctx,`${m.name} recua e ${ally.name} entra em campo!`);clipEv(ctx,m.side,"enter",ally.uid);animEv(ctx,m.side,"enter_teleport",0,ally.uid);orderEv(ctx);}
+      else if(ally&&alive(ally)&&idx>=0&&!c.doubles&&idx!==team.active){team.active=idx;msg(ctx,`${m.name} recua e ${ally.name} entra em campo!`);clipEv(ctx,m.side,"enter",ally.uid);animEv(ctx,m.side,"enter_teleport",0,ally.uid);orderEv(ctx);}
       return;
     }
     default: {
@@ -2066,7 +2084,7 @@ function openDefense(ctx: Ctx, m: Combatant, skill: KitSkill, spent: number): vo
 function fireUltimate(ctx:Ctx,m:Combatant,target?:Combatant):void {
  if(m.ultimateCharge<ULTIMATE_MAX)return;
  const skill=ultimateOf(m);
- const vic=target&&alive(target)&&target.side!==m.side&&reachesBench(skill)?target:foeOf(ctx,m);
+ const vic=target&&alive(target)&&target.side!==m.side&&(reachesBench(skill)||inField(ctx.c,target))?target:foeOf(ctx,m);
  if(!vic||!alive(vic))return;
  m.ultimateCharge=0;chargeEv(ctx,m);
  msg(ctx,`${m.name} — ${skill.name}!`);hist(ctx,`${m.name} usa ultimate exclusivo ${skill.name}`);
@@ -2146,7 +2164,7 @@ function applyItem(ctx: Ctx, m: Combatant, itemId: string): void {
 /** Reorganiza a agenda do round por agilidade efetiva + ritmo da skill. */
 function buildOrder(ctx: Ctx): void {
   const c = ctx.c;
-  const all = [fieldOf(c, "player"), fieldOf(c, "enemy")].filter((x): x is Combatant => !!x);
+  const all = [...fieldList(c, "player"), ...fieldList(c, "enemy")];
   const scored = all.map((m) => {
     const st = effectiveStats(c, m);
     const pace = m.pace > 0 ? m.pace : 0;
@@ -2192,7 +2210,7 @@ function stepOrder(ctx: Ctx): void {
       const negative = m.effects.find(e => !(PURGE_KEEPS as readonly string[]).includes(e.type));
       if (negative) removeEffect(m, negative.type);
     }
-    if ((m.side === "player" || c.pvp) && !c.autoResolve) {
+    if ((m.side === "player" || c.pvp) && !c.autoResolve && !c.botUids?.includes(m.uid)) {
       m.ready = true;
       c.ready = m.uid;
       c.phase = "menu";
@@ -2207,7 +2225,7 @@ function stepOrder(ctx: Ctx): void {
     if (checkEnd(ctx)) return;
     // um aliado caiu no turno do inimigo: o jogador escolhe quem entra
     if (
-      !c.pvp && !c.autoResolve &&
+      !c.pvp && !c.doubles && !c.autoResolve &&
       pField &&
       !alive(pField) &&
       livingCount(c, "player") > 0
@@ -2258,7 +2276,7 @@ function endRound(ctx: Ctx): void {
   c.history.push(`-- round ${c.turn} --`);
   buildOrder(ctx);
   orderEv(ctx);
-  if (needSwap && !c.pvp) {
+  if (needSwap && !c.pvp && !c.doubles) {
     requestSwap(ctx);
     return;
   }
@@ -2385,8 +2403,7 @@ function chooseAiAction(ctx: Ctx, m: Combatant): TurnPlan {
   const diff = DIFFICULTY[c.difficulty];
   const smart = diff.smart;
   const imp = statusImpact(m.effects);
-  const fieldFoe = fieldOf(c, other(m.side));
-  const foes = fieldFoe ? [fieldFoe] : [];
+  const foes = fieldList(c, other(m.side));
   const self = m.hp / m.maxHp;
 
   if(m.ultimateCharge>=ULTIMATE_MAX&&foes.length)return {kind:"ultimate",target:pickTarget(ctx,m,foes)??undefined};
@@ -2469,6 +2486,8 @@ export interface CombatSetup {
   difficulty?: Difficulty;
   /** formacao imposta pelo jogador (senao o padrao por slot). */
   formation?: Position[];
+  /** Duplas: dois robos por lado em campo. */
+  doubles?: boolean;
 }
 
 /** Semente estavel a partir da arena e dos times (replay deterministico). */
@@ -2495,6 +2514,7 @@ export function createCombat(args: CombatSetup): Combat {
 
   const combat: Combat = {
     pvp: args.pvp,
+    doubles: args.doubles || undefined,
     rules: args.playerTeam[0]?.battleRules ?? {},
     coreHp: args.playerTeam[0]?.battleRules?.core ?? 100,
     coreShield: 0,
@@ -2564,7 +2584,7 @@ function planFrom(ctx: Ctx, m: Combatant, action: CombatAction): TurnPlan {
       const skill = skillOf(m, action.skillId);
       const wanted = pick(action.targetUid);
       const vic =
-        wanted && alive(wanted) && wanted.side !== m.side && (reachesBench(skill) || (m.side === "player" && !!c.rules.targetId))
+        wanted && alive(wanted) && wanted.side !== m.side && (reachesBench(skill) || inField(c, wanted) || (m.side === "player" && !!c.rules.targetId))
           ? wanted
           : fieldOf(c, other(m.side));
       return { kind: "skill", skill, target: vic ?? undefined };
@@ -2619,7 +2639,7 @@ export function resolveRound(combat: Combat, action?: CombatAction): BattleEvent
     checkEnd(ctx);
     if (
       c.phase !== "over" &&
-      !c.pvp &&
+      !c.pvp && !c.doubles &&
       actor &&
       actor.side === "player" &&
       !alive(actor) &&
@@ -2665,7 +2685,7 @@ export function applyPvpAction(c: Combat, side: Side, action: CombatAction): Bat
   if ("targetUid" in action && action.targetUid) {
     const target = byUid(c, action.targetUid);
     if (!target || !alive(target) || target.side === side) throw new Error("Alvo inválido.");
-    if (action.kind === "skill" && !reachesBench(skillOf(actor, action.skillId)) && target.uid !== fieldOf(c, other(side))?.uid) throw new Error("Alvo fora de alcance.");
+    if (action.kind === "skill" && !reachesBench(skillOf(actor, action.skillId)) && target.uid !== fieldOf(c, other(side))?.uid && !inField(c, target)) throw new Error("Alvo fora de alcance.");
   }
   if (action.kind === "reposition" || action.kind === "cover") {
     const ally = action.withUid ? byUid(c, action.withUid) : null;
@@ -2791,6 +2811,7 @@ export function createBattle(args: {
   mode?: CombatMode;
   difficulty?: Difficulty;
   formation?: Position[];
+  doubles?: boolean;
 }): BattleView {
   return combatView(createCombat(args));
 }

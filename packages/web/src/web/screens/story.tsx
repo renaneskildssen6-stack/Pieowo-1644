@@ -4,8 +4,8 @@ import { spendItem, teamSaves, useGame } from "@/game/save";
 import { ITEM_MAP } from "@/game/config";
 import { ROBOT_MAP } from "@/game/robots";
 import {
-  SPEAKERS, STORY_CHAPTERS, chapterUnlocked, completeStoryChapter, markStoryOpened, payStoryFight,
-  setStoryFlag, storyEnemies, type SpeakerId, type StoryBattle, type StoryChapter, type StoryChoice, type StoryLine,
+  SPEAKERS, STORY_CHAPTERS, storyArc, chapterUnlocked, completeStoryChapter, markStoryOpened, payStoryFight,
+  setStoryFlag, storyEnemies, type SpeakerId, type StoryBattle, type StoryChapter, type StoryChoice, type StoryLine, type StoryBeat,
 } from "@/game/story";
 import "./story.css";
 
@@ -46,7 +46,7 @@ export function StoryScreen({ onBack }: { onBack: () => void }) {
     return { i, pending };
   }, [visible]);
 
-  const beat = chapter ? (cursor.pending[0] ?? chapter.beats[cursor.i]) : undefined;
+  const beat: StoryBeat | undefined = chapter ? ((cursor.pending[0] as StoryBeat | undefined) ?? chapter.beats[cursor.i]) : undefined;
 
   const finishChapter = useCallback((ch: StoryChapter) => {
     const r = completeStoryChapter(ch.id);
@@ -238,7 +238,7 @@ function StoryMap({ cleared, last, hasTeam, playerLevel, onOpen, onBack }: { cle
             <li key={c.id} ref={isFocus ? (el) => { focus.current = el; } : undefined} className={`ms-chapter${done ? " is-done" : ""}${unlocked ? "" : " is-locked"}${i === nextOpen ? " is-next" : ""}`} style={{ ["--i" as string]: i }}>
               <div className="ms-chapter-art"><img src={c.thumb} alt="" loading="lazy" /><span>{String(c.num).padStart(2, "0")}</span></div>
               <div className="ms-chapter-body">
-                <small>{done ? "CONCLUÍDO" : unlocked ? (i === nextOpen ? "NOVO" : "DISPONÍVEL") : "BLOQUEADO"} · NV RECOMENDADO {c.recommended}{unlocked && !done && playerLevel < c.recommended ? " ⚠" : ""}</small>
+                <small>{storyArc(c.num)} · {done ? "CONCLUÍDO" : unlocked ? (i === nextOpen ? "NOVO" : "DISPONÍVEL") : "BLOQUEADO"} · NV RECOMENDADO {c.recommended}{unlocked && !done && playerLevel < c.recommended ? " ⚠" : ""}</small>
                 <h2>{c.title}</h2>
                 <p>{unlocked ? c.synopsis : `Vença “${STORY_CHAPTERS[i - 1].title}” para liberar.`}</p>
                 <em>{done ? "Estreia recebida · replay paga as lutas" : `Estreia: ${c.reward.gold}g · ${c.reward.xp} XP · ${c.reward.qty}× ${ITEM_MAP[c.reward.item]?.name ?? c.reward.item}`}</em>
@@ -332,7 +332,7 @@ function StoryScene({ chapter, beat, stepKey, log, onLine, onAdvance, onChoose, 
   const enemies = beat?.kind === "battle" ? beat.enemies : [];
 
   return (
-    <div className={`ms-root ms-scene${fx ? ` fx-${fx}` : ""}`} data-testid="story-scene" data-step={stepKey}>
+    <div className={`ms-root ms-scene${fx ? ` fx-${fx}` : ""}`} data-testid="story-scene" data-step={stepKey} data-focus={activeSide ?? undefined}>
       <img className={`ms-bg${still ? " is-still" : ""}`} src={chapter.art} alt="" />
       <div className="ms-shade is-scene" />
       {fx === "flash" && <div className="ms-flash" key={`f${stepKey}`} />}

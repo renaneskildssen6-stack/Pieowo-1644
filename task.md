@@ -41,3 +41,9 @@ Feito e verificado no navegador (480×900, 390×844 com reduced-motion, 1366×76
 - `connected-city.tsx`: passo físico fixo 120 Hz, pausa com aba oculta, reduced-motion em cache, véu de carregamento, banner de distrito, dicas de controle recolhem após 9 s.
 - `verify-connected-city.py` passa (andar, descer, trem até Mina, subir, sem cobrança, sem erros).
 Não feito: gamepad, áudio, novos NPCs andando. Hub antigo e metrô modal antigos seguem no repositório, dormentes.
+
+## Sessão: vertical + cinematográfico (concluído)
+- Batalha portrait (battle-portrait.css, battle-world portrait sizing)
+- Round card, establishing shot, danger pulse, grain/vignette, cortes de tela, câmera na história, busts no hangar
+- Clima dinâmico + neon na cidade
+- storyArc() exibido na lista de capítulos

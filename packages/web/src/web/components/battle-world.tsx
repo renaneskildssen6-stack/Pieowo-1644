@@ -48,12 +48,13 @@ export function BattleWorld({ shot, enabled, children }: {
   const stageTop = bounds.top + label;
   const stageBottom = Math.max(stageTop + 72, bounds.bottom - 6);
   const stageH = stageBottom - stageTop;
-  const size = Math.round(Math.max(64, Math.min(192, stageH * .94, Math.max(112, bounds.width * .16))));
+  const portrait = bounds.height > bounds.width * 1.25;
+  const size = Math.round(Math.max(64, Math.min(192, stageH * .94, Math.max(112, bounds.width * (portrait ? .42 : .16)))));
   const focus = enabled && !reduced ? shot : null;
   const wanted = !focus ? 1 : focus.kind === "impact" ? 1.18 : focus.kind === "power" ? 1.48 : focus.kind === "entry" ? 1.25 : 1.38;
   // Zoom limitado: o robô ampliado nunca invade HUD nem console.
   const zoom = Math.max(1, Math.min(wanted, (stageBottom - bounds.top) / size * .92));
-  const anchor = bounds.width < 700 ? .2 : .24;
+  const anchor = portrait ? .25 : bounds.width < 700 ? .2 : .24;
   const subjectX = bounds.width * (focus?.side === "enemy" ? 1 - anchor : anchor);
   const desiredX = bounds.width * (focus?.side === "enemy" ? .59 : .41);
   const subjectY = stageBottom - size / 2;

@@ -233,6 +233,9 @@ export function renderConnectedCity(ctx:CanvasRenderingContext2D,v:CityView,art:
  if(v.trainX!==null)drawTrain(v.trainX,true);
  if(p.elevation>=100)drawPlayer();
 
+ const floor0=(y:number)=>Math.min(h,y);
+ // Clima em ciclo: garoa → tempestade → neblina (determinístico pelo relógio da cena).
+ const storm=still?0:Math.max(0,Math.sin(t*Math.PI*2/150)),fog=still?0:Math.max(0,Math.sin(t*Math.PI*2/150+Math.PI*1.15)),wet=Math.min(1,.35+storm);
  /* ---------------- 6. Light: additive pools, halos, headlights, station lamps ---------------- */
  ctx.save();ctx.globalCompositeOperation='lighter';
  if(surfaceFrontY>0&&horizon<h){
@@ -244,7 +247,13 @@ export function renderConnectedCity(ctx:CanvasRenderingContext2D,v:CityView,art:
   for(const b of CITY_BUILDINGS){if(!visible(b.x,200))continue;const d=project(b.x,b.doorZ);glowAt(v.near===`building:${b.id}`?'amber':'cyan',d.x,d.y,90,30,.42);}
   for(const s of STATIONS){if(!visible(s.entryX,200))continue;const e=project(s.entryX,s.entryZ);glowAt('amber',e.x,e.y,110,40,.5*pulse(2,s.entryX));}
   for(const car of v.traffic){if(!visible(car.x,200))continue;const lane=TRAFFIC_LANES[car.lane],pt=project(car.x,lane.z);
-   glowAt('cyan',pt.x,pt.y,car.w*.55,12,.5);glowAt('white',pt.x+lane.dir*(car.w*.5+50),pt.y-4,70,16,.35);glowAt('magenta',pt.x-lane.dir*car.w*.5,pt.y-14,16,10,.6);}
+   glowAt('cyan',pt.x,pt.y,car.w*.55,12,.5);glowAt('white',pt.x+lane.dir*(car.w*.5+50),pt.y-4,70,16,.35);glowAt('magenta',pt.x-lane.dir*car.w*.5,pt.y-14,16,10,.6);
+   glowAt('white',pt.x+lane.dir*(car.w*.5+30),pt.y+14,40,30,.12+.22*wet);}
+  // asfalto molhado: reflexos verticais das luzes e neon piscando nas fachadas
+  for(const prop of CITY_PROPS){if(prop.kind!=='lamp'||!visible(prop.x,80))continue;const base=project(prop.x,prop.z);glowAt('cyan',base.x,base.y+30,16,44,.12+.3*wet);}
+  for(const b of CITY_BUILDINGS){if(!visible(b.x,200))continue;const d=project(b.x,b.doorZ),seed=b.x*.013;
+   const flick=still?1:(Math.sin(t*23+seed*7)>.93-.05*Math.sin(seed)?.25:1)*(.75+.25*Math.sin(t*1.3+seed));
+   glowAt(Math.sin(seed*3)>0?'magenta':'cyan',d.x,d.y-92,70,34,.3*flick);glowAt('magenta',d.x,d.y+22,60,26,.1+.22*wet);}
  }
  if(wallBase+260>0&&slabTop<h){
   const wx=project(0,WALL_BASE_Z,SUBWAY_LEVEL).x,first=Math.floor((-wx)/WALL_TILE)-1;
@@ -258,7 +267,12 @@ export function renderConnectedCity(ctx:CanvasRenderingContext2D,v:CityView,art:
  /* ---------------- 7. Atmosphere: drizzle on the street, dust under it (off with reduced motion) ---------------- */
  if(!still){
   if(horizon<h&&surfaceFrontY>0){ctx.strokeStyle='#9be8ff2e';ctx.lineWidth=1;ctx.beginPath();
-   for(let i=0;i<70;i++){const sx=((i*97.3-cx*.9+t*40)%(w+40)+w+40)%(w+40)-20,sy=((i*53.7+t*520)%(Math.min(h,surfaceFrontY)+60))-30;ctx.moveTo(sx,sy);ctx.lineTo(sx-3,sy+11);}ctx.stroke();}
+   const drops=Math.round(70+storm*150),slant=3+storm*6,len=11+storm*9,fall=520+storm*380,floor=Math.min(h,surfaceFrontY);
+   for(let i=0;i<drops;i++){const sx=((i*97.3-cx*.9+t*40)%(w+40)+w+40)%(w+40)-20,sy=((i*53.7+t*fall)%(floor+60))-30;ctx.moveTo(sx,sy);ctx.lineTo(sx-slant,sy+len);}ctx.stroke();
+   if(storm>.2){ctx.fillStyle=`rgba(190,240,255,${.35*storm})`;for(let i=0;i<Math.round(40*storm);i++){const ph=(t*2.1+i*.37)%1,sx=((i*131.9-cx)%w+w)%w,sy=horizon+((i*89.1)%Math.max(30,floor-horizon));if(ph<.35){const r=1+ph*10;ctx.fillRect(sx-r,sy,r*2,1);}}}
+   if(storm>.65){const k=Math.floor(t*.9),r=Math.abs(Math.sin(k*91.7)*43758.5)%1,local=t*.9-k;if(r>.78&&local<.22){ctx.fillStyle=`rgba(220,236,255,${(.22-local)*(local<.06?2.6:1.4)})`;ctx.fillRect(0,0,w,floor);}}}
+  if(fog>.05&&surfaceFrontY>0){for(let i=0;i<3;i++){const y=horizon+(floor0(surfaceFrontY)-horizon)*(.25+i*.28),off=((t*(8+i*5)-cx*.3*(i+1))%(w*2)+w*2)%(w*2)-w;
+   const g=ctx.createLinearGradient(0,y-50,0,y+50);g.addColorStop(0,'#a9d8e800');g.addColorStop(.5,`rgba(169,216,232,${.13*fog})`);g.addColorStop(1,'#a9d8e800');ctx.fillStyle=g;ctx.fillRect(off,y-50,w*2,100);ctx.fillRect(off-w*2,y-50,w*2,100);}}
   if(wallBase>0&&slabTop<h){for(let i=0;i<26;i++){const sx=((i*151.7-cx+t*12)%(w+20)+w+20)%(w+20),sy=wallTop+((i*71.3+Math.sin(t+i)*20)%(Math.max(40,wallBase-wallTop)));ctx.fillStyle=`rgba(255,214,140,${.25+.2*Math.sin(t*2+i)})`;ctx.fillRect(sx,sy,2,2);}}
  }
  const vignette=ctx.createLinearGradient(0,h-150,0,h);vignette.addColorStop(0,'#03111a00');vignette.addColorStop(1,'#03111ae0');ctx.fillStyle=vignette;ctx.fillRect(0,h-150,w,150);

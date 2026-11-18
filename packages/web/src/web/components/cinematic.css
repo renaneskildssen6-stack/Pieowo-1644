@@ -1,0 +1,43 @@
+/* Passe cinematográfico global: película, entradas de tela em widescreen, diálogos e cenas com câmera. */
+.mc-film{position:absolute;inset:0;z-index:58;pointer-events:none;mix-blend-mode:overlay;opacity:.16;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation:mc-grain .5s steps(5) infinite}
+.mc-film-vignette{position:absolute;inset:0;z-index:57;pointer-events:none;background:radial-gradient(ellipse 80% 75% at 50% 48%,transparent 62%,#01030acc 100%)}
+@keyframes mc-grain{0%{background-position:0 0}20%{background-position:-37px 21px}40%{background-position:53px -11px}60%{background-position:-19px -47px}80%{background-position:29px 61px}100%{background-position:0 0}}
+
+/* Telas do sistema abrem como um corte de cinema */
+.mc-cine-screen{animation:mc-screen-in .62s cubic-bezier(.2,.8,.2,1) both}
+.mc-cine-screen::after{content:"";position:absolute;inset:0;z-index:50;pointer-events:none;background:linear-gradient(180deg,transparent 0 46%,#9ff4ff55 50%,transparent 54%);background-size:100% 220%;animation:mc-scan-sweep .7s .1s ease-out both}
+@keyframes mc-screen-in{0%{clip-path:inset(49% 0 49% 0);filter:brightness(2.4) saturate(0)}35%{clip-path:inset(38% 0 38% 0);filter:brightness(1.6)}100%{clip-path:inset(0 0 0 0);filter:none}}
+@keyframes mc-scan-sweep{from{background-position:0 100%;opacity:1}to{background-position:0 -20%;opacity:0}}
+
+/* Diálogos e dossiês entram com impacto */
+.mc-game-viewport [role="dialog"],.mc-skill-dossier{animation:mc-dialog-in .32s cubic-bezier(.2,1.3,.3,1) both}
+@keyframes mc-dialog-in{from{opacity:0;scale:.9;filter:blur(4px) brightness(1.6)}to{opacity:1;scale:1;filter:none}}
+
+/* Botões de comando: brilho varrendo ao passar */
+.ai-plate{position:relative;overflow:hidden}
+.ai-plate::before{content:"";position:absolute;top:0;bottom:0;left:-60%;width:40%;pointer-events:none;background:linear-gradient(100deg,transparent,#ffffff40,transparent);transform:skewX(-18deg);transition:left .45s ease-out;opacity:.9}
+.ai-plate:hover::before,.ai-plate:focus-visible::before{left:130%}
+
+/* História: letterbox, câmera que segue quem fala, poeira em suspensão */
+.ms-scene::before,.ms-scene::after{content:"";position:absolute;left:0;right:0;height:4.5vh;background:#000;z-index:2;pointer-events:none}
+.ms-scene::before{top:0}.ms-scene::after{bottom:0}
+.ms-scene .ms-bg{transition:translate 1.6s cubic-bezier(.3,.7,.2,1),scale 1.6s cubic-bezier(.3,.7,.2,1),filter .8s}
+.ms-scene[data-focus=left] .ms-bg{translate:1.8% 0;scale:1.035}
+.ms-scene[data-focus=right] .ms-bg{translate:-1.8% 0;scale:1.035}
+.ms-scene[data-focus] .ms-bg{filter:saturate(.9) brightness(.9)}
+.ms-scene .ms-shade.is-scene::after{content:"";position:absolute;inset:0;opacity:.55;background-image:radial-gradient(1.5px 1.5px at 12% 30%,#fff8 50%,transparent),radial-gradient(1px 1px at 33% 72%,#cff6 50%,transparent),radial-gradient(2px 2px at 58% 18%,#ffe9b066 50%,transparent),radial-gradient(1px 1px at 78% 55%,#fff7 50%,transparent),radial-gradient(1.5px 1.5px at 91% 80%,#9ef6 50%,transparent);background-size:420px 300px;animation:mc-dust 26s linear infinite}
+@keyframes mc-dust{from{background-position:0 0}to{background-position:420px -300px}}
+.ms-portrait.is-active{animation-name:ms-in-left,mc-breathe;animation-duration:420ms,3.2s;animation-timing-function:steps(7),ease-in-out;animation-iteration-count:1,infinite;animation-direction:normal,alternate}
+.ms-portrait.is-right.is-active{animation-name:ms-in-right,mc-breathe}
+@keyframes mc-breathe{from{scale:1}to{scale:1.012}}
+
+@media(prefers-reduced-motion:reduce){.mc-film,.mc-cine-screen,.mc-cine-screen::after,.mc-game-viewport [role="dialog"],.mc-skill-dossier,.ms-scene .ms-shade.is-scene::after,.ms-portrait.is-active{animation:none!important}.ms-scene .ms-bg{transition:none}}
+/* Hangar: busto do robô selecionado */
+.mc-roster-hero{position:relative;width:118px;height:132px;flex-shrink:0;overflow:hidden;background:radial-gradient(ellipse at 50% 70%,#1d4e6a,#050c16 72%);box-shadow:inset 0 0 0 1px #35e2f066,0 6px 14px #0008}
+.mc-roster-hero img{position:absolute;inset:auto 0 0 50%;width:132%;height:auto;translate:-50% 6%;image-rendering:pixelated;-webkit-mask-image:linear-gradient(180deg,#000 62%,transparent 98%);mask-image:linear-gradient(180deg,#000 62%,transparent 98%);animation:mc-hero-in .6s cubic-bezier(.2,.8,.2,1) both,mc-breathe 3.4s 0.6s ease-in-out infinite alternate}
+.mc-roster-hero i{position:absolute;inset:0;pointer-events:none;background:linear-gradient(115deg,transparent 40%,#9ff4ff2e 50%,transparent 60%) 0 0/250% 100%;animation:mc-hero-shine 3.8s ease-in-out infinite}
+@keyframes mc-hero-in{from{opacity:0;translate:-30% 6%;filter:brightness(2.2)}}
+@keyframes mc-hero-shine{0%,60%{background-position:120% 0}100%{background-position:-60% 0}}
+@media(prefers-reduced-motion:reduce){.mc-roster-hero img,.mc-roster-hero i{animation:none}}

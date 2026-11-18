@@ -67,7 +67,7 @@ export function HubCity({onEnter,enabled=true,onHome}:{onEnter:(id:Exclude<Scree
   return()=>{window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',reset);};
  },[]);
  useEffect(()=>{
-  const c=canvas.current,wrap=root.current;if(!c||!wrap)return;const ctx=c.getContext('2d');if(!ctx)return;
+  const c=canvas.current,wrap=root.current;if(!c||!wrap)return;const ctx=c.getContext('2d') as CanvasRenderingContext2D;if(!ctx)return;
   let w=480,h=844,raf=0,last=performance.now(),paint=0;
   const art=new CityArt();art.preload(CRITICAL_ART);art.preload(STREAMED_ART);
   const veilStart=performance.now();let veilOpen=true,lastDistrict='';

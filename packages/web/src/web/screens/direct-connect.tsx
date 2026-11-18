@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import "./online.css";
 
-type Signal = { type: "offer" | "answer"; sdp: string | null };
+type Signal = { type: "offer" | "answer"; sdp?: string };
 
 function waitForIce(pc: RTCPeerConnection) {
   if (pc.iceGatheringState === "complete") return Promise.resolve();
@@ -36,10 +36,10 @@ export function DirectConnect({ onBack }: { onBack: () => void }) {
     close(); setRole("host"); setStatus("GERANDO OFERTA…");
     const next = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }, { urls: "stun:stun.cloudflare.com:3478" }] }); pc.current = next; bindChannel(next.createDataChannel("mecha-battle"));
     next.onconnectionstatechange = () => { if (["failed", "disconnected"].includes(next.connectionState)) setStatus("A conexão caiu. Tente gerar uma oferta novamente."); };
-    await next.setLocalDescription(await next.createOffer()); await waitForIce(next); setSignal(encode({ type: "offer", sdp: next.localDescription?.sdp ?? null })); setStatus("Envie esta oferta ao aparelho convidado.");
+    await next.setLocalDescription(await next.createOffer()); await waitForIce(next); setSignal(encode({ type: "offer", sdp: next.localDescription?.sdp })); setStatus("Envie esta oferta ao aparelho convidado.");
   };
   const acceptOffer = async () => {
-    try { close(); setRole("guest"); setStatus("CRIANDO RESPOSTA…"); const next = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }, { urls: "stun:stun.cloudflare.com:3478" }] }); pc.current = next; next.ondatachannel = (e) => bindChannel(e.channel); await next.setRemoteDescription(decode(incoming)); await next.setLocalDescription(await next.createAnswer()); await waitForIce(next); setSignal(encode({ type: "answer", sdp: next.localDescription?.sdp ?? null })); setStatus("Envie esta resposta de volta ao anfitrião."); } catch (e) { setStatus(e instanceof Error ? e.message : "Não foi possível aceitar a oferta."); }
+    try { close(); setRole("guest"); setStatus("CRIANDO RESPOSTA…"); const next = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }, { urls: "stun:stun.cloudflare.com:3478" }] }); pc.current = next; next.ondatachannel = (e) => bindChannel(e.channel); await next.setRemoteDescription(decode(incoming)); await next.setLocalDescription(await next.createAnswer()); await waitForIce(next); setSignal(encode({ type: "answer", sdp: next.localDescription?.sdp })); setStatus("Envie esta resposta de volta ao anfitrião."); } catch (e) { setStatus(e instanceof Error ? e.message : "Não foi possível aceitar a oferta."); }
   };
   const applyAnswer = async () => { try { if (!pc.current || role !== "host") throw new Error("Crie uma oferta primeiro."); await pc.current.setRemoteDescription(decode(incoming)); setStatus("NEGOCIANDO CONEXÃO DIRETA…"); } catch (e) { setStatus(e instanceof Error ? e.message : "Resposta inválida."); } };
   const send = () => { if (!message.trim() || channel.current?.readyState !== "open") return; channel.current.send(message.trim()); setLog((l) => [...l, `VOCÊ: ${message.trim()}`]); setMessage(""); };
