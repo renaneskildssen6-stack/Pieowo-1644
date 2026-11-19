@@ -31,3 +31,5 @@
 @keyframes mc-intro-blink{50%{opacity:.35}}
 @media(orientation:portrait){.mc-intro-bar{height:14%}.mc-intro-caption{bottom:calc(14% + 14px)}.mc-intro-ui{top:calc(14% + 10px)}}
 @media(prefers-reduced-motion:reduce){.mc-intro,.mc-intro-caption p,.mc-intro-title,.mc-intro-bar{animation-duration:.01s}}
+/* fonte do filme: decodifica fora da vista, o canvas desenha em pixel duro */
+.mc-intro-film { position: absolute; left: 0; top: 0; width: 2px; height: 2px; opacity: 0; pointer-events: none; }

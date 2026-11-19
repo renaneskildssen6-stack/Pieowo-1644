@@ -6,15 +6,14 @@ import { fightReward, grantXP } from "./engine";
 import { ROBOT_MAP } from "./robots";
 import { addGold, addPlayerXP, applyPetRewards, getState, incBattlesWon, setState, updateRobots } from "./save";
 
-export type SpeakerId =
-  | "lyra" | "nara" | "aurorion" | "narrador" | "sistema"
-  | "scavenger" | "scrapking" | "siegetank" | "mirrorduelist" | "chronoguard" | "voidarchon"
-  | "lyra_orbit" | "voidnavigator"
-  | "eventhorizon" | "valkyrune" | "aurumtitan" | "scarabking";
+import { CAST } from "./story-cast";
+import { L, art, intro, type BaseSpeakerId, type SpeakerId, type Speaker, type StoryBattle, type StoryChapter } from "./story-kit";
+import { SAGA2 } from "./story-saga2";
+import { SAGA3 } from "./story-saga3";
+import { CONTOS } from "./story-contos";
+export * from "./story-kit";
 
-export interface Speaker { name: string; portrait?: string; side: "left" | "right"; tone: string }
-
-export const SPEAKERS: Record<SpeakerId, Speaker> = {
+const BASE_SPEAKERS: Record<BaseSpeakerId, Speaker> = {
   lyra: { name: "COMANDANTE LYRA", portrait: "/story/lyra.png", side: "left", tone: "#35e2f0" },
   nara: { name: "ENGENHEIRA NARA", portrait: "/story/nara.png", side: "left", tone: "#ffb21a" },
   aurorion: { name: "AURORION", portrait: "/busts/aurorion_bust.png", side: "right", tone: "#ffe08a" },
@@ -34,58 +33,23 @@ export const SPEAKERS: Record<SpeakerId, Speaker> = {
   scarabking: { name: "REI-ESCARAVELHO · DUAT", portrait: "/busts/scarabking_bust.png", side: "right", tone: "#5fffc0" },
 };
 
-export type StoryFx = "shake" | "flash" | "glitch" | "zoom" | "alarm" | "quake";
-
-export interface StoryLine {
-  kind: "line";
-  who: SpeakerId;
-  text: string;
-  fx?: StoryFx;
-  /** mostra a fala só se a flag tiver esse valor. */
-  when?: [string, string];
-}
-export interface StoryChoice {
-  kind: "choice";
-  flag: string;
-  prompt: string;
-  options: { value: string; label: string; reply: StoryLine[] }[];
-}
-export interface StoryEnemy { id: string; level: number; trained: number; statScale?: number }
-export interface StoryBattle {
-  kind: "battle";
-  id: string;
-  label: string;
-  arena: string;
-  enemies: StoryEnemy[];
-}
-export interface StoryBackdrop { kind: "bg"; art: string }
-export type StoryBeat = StoryLine | StoryChoice | StoryBattle | StoryBackdrop;
-
-export interface StoryChapter {
-  id: string;
-  num: number;
-  title: string;
-  subtitle: string;
-  synopsis: string;
-  art: string;
-  thumb: string;
-  recommended: number;
-  reward: { gold: number; xp: number; item: string; qty: number };
-  beats: StoryBeat[];
-  /** Posição no mapa panorâmico vertical da campanha. Ausente nos capítulos antigos = legado. */
-  map?: { x: number; y: number; region: string };
-}
-
-const L = (who: SpeakerId, text: string, fx?: StoryFx, when?: [string, string]): StoryLine => ({ kind: "line", who, text, fx, when });
-const art = (n: string) => `/story/${n}.webp`;
-const intro = (n: number) => `/intro/s${String(n).padStart(2, "0")}.webp`;
 
 /** Arcos da campanha, para agrupar capítulos no mapa e na lista. */
 export function storyArc(num: number): string {
+  if (num > 100) return "CONTOS DE AURORA";
+  if (num > 42) return "ARCO VIII · O GRANDE CONCERTO";
+  if (num > 36) return "ARCO VII · OS MOVIMENTOS";
+  if (num > 30) return "ARCO VI · O PALÁCIO PARTIDO";
+  if (num > 24) return "ARCO V · O CONVITE DE CRISTAL";
   return num <= 6 ? "ARCO I · AURORA" : num <= 12 ? "ARCO II · ROTA HELIX" : num <= 18 ? "ARCO III · O HORIZONTE" : "ARCO IV · O PANTEÃO";
 }
+export const chapterArc = (c: StoryChapter) => c.arc ?? storyArc(c.num);
+export const chapterTag = (c: StoryChapter) => c.tag ?? String(c.num).padStart(2, "0");
+export const chapterSaga = (c: StoryChapter) => c.saga ?? 1;
 
-export const STORY_CHAPTERS: StoryChapter[] = [
+export const SPEAKERS: Record<SpeakerId, Speaker> = { ...BASE_SPEAKERS, ...CAST };
+
+const SAGA1: StoryChapter[] = [
   {
     id: "ferrugem", num: 1, title: "FERRUGEM NA LINHA", subtitle: "Plataforma Aurora · 23:40",
     synopsis: "Os trens pararam. Algo está devorando os cabos do metrô.",
@@ -592,13 +556,31 @@ export const STORY_CHAPTERS: StoryChapter[] = [
       L("aurorion", "A primeira luz nos acordou. Todas as próximas serão nossas."),
       L("sistema", "CRÔNICAS DA PRIMEIRA LUZ — SAGA CONCLUÍDA. OBRIGADO, PILOTO.", "flash"),
     ],
+    final: "A cidade amanheceu. Mas, no céu, um cristal violeta acaba de rachar… A SAGA II — A COROA FRATURADA — foi liberada.",
   },
 ];
 
+/** Ordem importa: o requisito implícito de cada capítulo é o anterior desta lista. Contos usam `requires`. */
+export const STORY_CHAPTERS: StoryChapter[] = [...SAGA1, ...SAGA2, ...SAGA3, ...CONTOS];
+
 export const STORY_MAP = Object.fromEntries(STORY_CHAPTERS.map((c) => [c.id, c])) as Record<string, StoryChapter>;
 
+export function chapterRequirement(index: number): StoryChapter | null {
+  const c = STORY_CHAPTERS[index];
+  if (!c) return null;
+  if (c.requires) return STORY_MAP[c.requires] ?? null;
+  return index > 0 ? STORY_CHAPTERS[index - 1] : null;
+}
 export function chapterUnlocked(cleared: string[], index: number): boolean {
-  return index === 0 || cleared.includes(STORY_CHAPTERS[index - 1].id);
+  const req = chapterRequirement(index);
+  return !req || cleared.includes(req.id);
+}
+/** Próximo capítulo da mesma saga (para o botão “PRÓXIMO”). */
+export function nextChapter(c: StoryChapter): StoryChapter | null {
+  if (c.final) return null;
+  const i = STORY_CHAPTERS.findIndex((x) => x.id === c.id);
+  const n = STORY_CHAPTERS[i + 1];
+  return n && chapterSaga(n) === chapterSaga(c) ? n : null;
 }
 
 export function storyEnemies(b: StoryBattle) {

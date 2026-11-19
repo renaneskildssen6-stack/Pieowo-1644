@@ -27,6 +27,32 @@ export const onlineMatches = sqliteTable("mecha_online_matches", {
   winnerId: text("winner_id"),
   finished: integer("finished"),
   created: integer("created").notNull(),
+  /** "duel" (1v1 / equipes) ou "doubles" (2v2 com quatro pilotos). */
+  mode: text("mode").notNull().default("duel"),
+  /** Pilotos: [{ userId, name, side, uids, bot }]. Vazio = partida antiga (host/guest). */
+  pilots: text("pilots").notNull().default("[]"),
+  /** Emotes rápidos: [{ userId, name, side, emote, at }]. */
+  chat: text("chat").notNull().default("[]"),
+  /** Presença: { userId: último contato em ms }. */
+  seen: text("seen").notNull().default("{}"),
+  /** Votos de revanche (userIds) e a partida seguinte, quando todos aceitam. */
+  rematch: text("rematch").notNull().default("[]"),
+  nextId: text("next_id"),
+  /** 1 = partida da fila RANQUEADA online (altera o rating). */
+  ranked: integer("ranked").default(0),
+  /** Variação de rating por piloto: { userId: delta }. */
+  rankDelta: text("rank_delta").default("{}"),
+});
+/** Salas de Duplas 2v2: quatro assentos (A1, A2, B1, B2); vagas vazias viram IA ao iniciar. */
+export const onlineRooms = sqliteTable("mecha_online_rooms", {
+  code: text("code").primaryKey(),
+  hostId: text("host_id").notNull(),
+  isPublic: integer("is_public").notNull().default(0),
+  /** JSON de 4 posições: null | { userId, name, robot, seen }. */
+  seats: text("seats").notNull(),
+  matchId: text("match_id"),
+  updated: integer("updated").notNull(),
+  created: integer("created").notNull(),
 });
 export const onlineReceipts = sqliteTable("mecha_online_receipts", {
   id: text("id").primaryKey(),
@@ -40,6 +66,17 @@ export const onlineRecords = sqliteTable("mecha_online_records", {
   name: text("name").notNull(),
   wins: integer("wins").notNull().default(0),
   losses: integer("losses").notNull().default(0),
+});
+/** Rating da RANQUEADA ONLINE (Elo por piloto; tier derivado dos RANKS do jogo). */
+export const onlineRatings = sqliteTable("mecha_online_ratings", {
+  userId: text("user_id").primaryKey(),
+  name: text("name").notNull(),
+  rating: integer("rating").notNull().default(1000),
+  peak: integer("peak").notNull().default(1000),
+  wins: integer("wins").notNull().default(0),
+  losses: integer("losses").notNull().default(0),
+  streak: integer("streak").notNull().default(0),
+  updated: integer("updated").notNull().default(0),
 });
 
 /**

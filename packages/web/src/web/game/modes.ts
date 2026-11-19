@@ -11,7 +11,8 @@ export type ModeId =
   | "gauntlet"
   | "trials"
   | "raid"
-  | "nightmare";
+  | "nightmare"
+  | "doubles";
 
 export interface ModeDef {
   id: ModeId;
@@ -26,6 +27,16 @@ export interface ModeDef {
 }
 
 export const MODES: ModeDef[] = [
+  {
+    id: "doubles",
+    name: "DUPLAS 2v2",
+    tagline: "2 ROBÔS EM CAMPO",
+    desc: "Dois robôs seus lutam lado a lado contra uma dupla rival. Escolha o alvo de cada golpe; o reserva entra quando alguém cai.",
+    art: "/modes/gauntlet.png",
+    arena: "neodojo",
+    accent: "#ff7ad9",
+    requiredLevel: 1,
+  },
   {
     id: "quick",
     name: "PARTIDA RAPIDA",
@@ -288,6 +299,15 @@ export function bossStage(index: number, teamLevel: number): StageSetup {
     }),
     reward: 2 + index,
     boss: true,
+  };
+}
+
+export function doublesStage(teamLevel: number, teamSize: number): StageSetup {
+  return {
+    label: "DUPLA RIVAL",
+    arena: ARENAS[Math.floor(Math.random() * ARENAS.length)] as string,
+    enemies: randomEnemyTeam({ level: teamLevel, count: Math.max(2, Math.min(4, teamSize)), trained: 1 }),
+    reward: 1.3,
   };
 }
 

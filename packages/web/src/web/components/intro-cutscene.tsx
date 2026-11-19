@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import "./intro-cutscene.css";
 
 /**
- * Abertura cinematográfica: 15 planos de IA animados em tempo real (60 qps, relógio próprio —
+ * Abertura cinematográfica: 15 planos em filme a 4 qps (/intro/intro.mp4; fallback animado a 60 qps, relógio próprio —
  * o currentTime do áudio só ressincroniza). Cada plano tem fundo e personagem em camadas
  * separadas (paralaxe 2.5D), respiração, balanço, piscadas, ondulação, luz e partículas em profundidade.
  */
@@ -79,8 +79,9 @@ export function IntroCutscene({ onDone }: { onDone: () => void }) {
   const [muted, setMuted] = useState(false);
   const [ending, setEnding] = useState(false);
   const audio = useRef<HTMLAudioElement | null>(null);
+  const video = useRef<HTMLVideoElement>(null);
   const done = useRef(false);
-  const finish = () => { if (done.current) return; done.current = true; audio.current?.pause(); onDone(); };
+  const finish = () => { if (done.current) return; done.current = true; audio.current?.pause(); video.current?.pause(); onDone(); };
 
   useEffect(() => {
     const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
@@ -94,8 +95,32 @@ export function IntroCutscene({ onDone }: { onDone: () => void }) {
     { const g = grain.getContext("2d")!, d = g.createImageData(128, 128), r = rng(7); for (let k = 0; k < d.data.length; k += 4) { const v = r() * 255; d.data[k] = d.data[k + 1] = d.data[k + 2] = v; d.data[k + 3] = 20; } g.putImageData(d, 0, 0); }
     let loaded = 0, raf = 0, start = 0, alive = true, lastShot = -1, titled = false, grainPat: CanvasPattern | null = null, grainSeed = 0;
     const a = new Audio("/intro/theme.mp3"); a.preload = "auto"; a.volume = .85; audio.current = a;
-    const begin = () => { if (!alive) return; start = performance.now(); a.play().catch(() => {}); raf = requestAnimationFrame(tick); };
-    all.forEach(im => { const on = () => { loaded++; setReady(loaded / all.length); if (loaded === all.length) begin(); }; if (ok(im)) on(); else { im.onload = on; im.onerror = on; } });
+    // Filme da abertura: 15 planos animados a 4 qps, paleta reduzida e pixel duro (/intro/intro.mp4).
+    // Sem vídeo (erro, lento demais ou movimento reduzido) cai na animação em canvas abaixo.
+    const vid = video.current; let useVid = !reduce && !!vid, vidOk = false;
+    const need = all.length + (useVid ? 1 : 0);
+    const begin = () => {
+      if (!alive) return; start = performance.now(); a.play().catch(() => {});
+      if (useVid && vidOk && vid) { vid.currentTime = 0; vid.play().catch(() => { useVid = false; }); }
+      raf = requestAnimationFrame(tick);
+    };
+    const on = () => { loaded++; setReady(loaded / need); if (loaded === need) begin(); };
+    all.forEach(im => { if (ok(im)) on(); else { im.onload = on; im.onerror = on; } });
+    if (useVid && vid) {
+      let settled = false;
+      const settle = (good: boolean) => { if (settled) return; settled = true; vidOk = good; if (!good) useVid = false; on(); };
+      vid.addEventListener("loadeddata", () => settle(true), { once: true });
+      vid.addEventListener("error", () => settle(false), { once: true });
+      setTimeout(() => settle(false), 9000);
+      if (vid.readyState >= 2) settle(true);
+      vid.load();
+    }
+    const drawVideo = (ctx: CanvasRenderingContext2D, W: number, H: number, t: number) => {
+      const v = vid!; if (Math.abs(v.currentTime - t) > .3 && !v.seeking) v.currentTime = Math.min(t, TOTAL_SEC - .05);
+      if (v.paused && !v.ended) v.play().catch(() => {});
+      const vw = v.videoWidth || 640, vh = v.videoHeight || 360, k = Math.max(W / vw, H / vh);
+      ctx.imageSmoothingEnabled = false; ctx.drawImage(v, Math.round((W - vw * k) / 2), Math.round((H - vh * k) / 2), Math.ceil(vw * k), Math.ceil(vh * k));
+    };
 
     const draw = (ctx: CanvasRenderingContext2D, W: number, H: number, i: number, lt: number, alpha: number, T: number) => {
       const s = SHOTS[i], an = s.a ?? {}, im = main[i], p = Math.min(1, Math.max(0, lt / SHOT_SEC)), e = ease(p);
@@ -208,7 +233,8 @@ export function IntroCutscene({ onDone }: { onDone: () => void }) {
       const ctx = c.getContext("2d")!; ctx.imageSmoothingEnabled = false;
       const i = Math.max(0, Math.min(SHOTS.length - 1, Math.floor(t / SHOT_SEC))), lt = t - i * SHOT_SEC;
       ctx.globalAlpha = 1; ctx.fillStyle = "#000"; ctx.fillRect(0, 0, W, H);
-      if (lt < FADE && i > 0) { draw(ctx, W, H, i - 1, SHOT_SEC + lt, 1, t); draw(ctx, W, H, i, lt, lt / FADE, t); }
+      if (useVid && vidOk && vid && vid.readyState >= 2) drawVideo(ctx, W, H, t);
+      else if (lt < FADE && i > 0) { draw(ctx, W, H, i - 1, SHOT_SEC + lt, 1, t); draw(ctx, W, H, i, lt, lt / FADE, t); }
       else draw(ctx, W, H, i, lt, 1, t);
       grainPat ??= ctx.createPattern(grain, "repeat");
       if (grainPat) { if (Math.floor(t * 24) !== grainSeed) grainSeed = Math.floor(t * 24); const r = rng(grainSeed); ctx.save(); ctx.translate(Math.floor(r() * 128), Math.floor(r() * 128)); ctx.fillStyle = grainPat; ctx.fillRect(-128, -128, W + 256, H + 256); ctx.restore(); }
@@ -219,7 +245,7 @@ export function IntroCutscene({ onDone }: { onDone: () => void }) {
     };
     const key = (e: KeyboardEvent) => { if (e.key === "Escape" || e.key === "Enter") { e.preventDefault(); finish(); } };
     window.addEventListener("keydown", key);
-    return () => { alive = false; cancelAnimationFrame(raf); a.pause(); a.src = ""; window.removeEventListener("keydown", key); };
+    return () => { alive = false; cancelAnimationFrame(raf); a.pause(); a.src = ""; vid?.pause(); window.removeEventListener("keydown", key); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => { if (audio.current) audio.current.muted = muted; }, [muted]);
@@ -227,6 +253,7 @@ export function IntroCutscene({ onDone }: { onDone: () => void }) {
   const s = SHOTS[shot];
   return <div className={`mc-intro${ending ? " is-ending" : ""}`} role="dialog" aria-label="Abertura de Mecha Champions">
     <canvas ref={canvas} aria-hidden />
+    <video ref={video} className="mc-intro-film" src="/intro/intro.mp4" muted playsInline preload="auto" aria-hidden tabIndex={-1} />
     <div className="mc-intro-vignette" aria-hidden />
     <i className="mc-intro-bar is-top" aria-hidden /><i className="mc-intro-bar is-bottom" aria-hidden />
     {ready < 1 && <div className="mc-intro-load" role="status"><small>SINTONIZANDO TRANSMISSÃO</small><b><u style={{ width: `${Math.round(ready * 100)}%` }} /></b></div>}

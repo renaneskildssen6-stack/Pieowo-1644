@@ -30,7 +30,7 @@ export function VsScreen({
 }) {
   const g = useGame();
   useEffect(() => {
-    const id = window.setTimeout(onDone, 3200);
+    const id = window.setTimeout(onDone, 2200);
     return () => window.clearTimeout(id);
   }, [onDone]);
   const pm = g.mastery[playerId];

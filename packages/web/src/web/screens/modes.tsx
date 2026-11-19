@@ -9,6 +9,7 @@ import {
   MODES,
   nightmareStage,
   quickStage,
+  doublesStage,
   raidStage,
   rollMutator,
   survivalStage,
@@ -67,6 +68,7 @@ const REST: Record<ModeId, number> = {
   trials: 0.15,
   raid: 0,
   nightmare: 0,
+  doubles: 1,
 };
 
 export function ModesScreen({ onBack }: { onBack: () => void }) {
@@ -87,6 +89,7 @@ export function ModesScreen({ onBack }: { onBack: () => void }) {
     if (mode.id === "trials") return trialsStage(step, teamLevel);
     if (mode.id === "raid") return raidStage(teamLevel);
     if (mode.id === "nightmare") return nightmareStage(step, teamLevel);
+    if (mode.id === "doubles") return doublesStage(teamLevel, team.length);
     return quickStage(teamLevel);
   }
 
@@ -180,7 +183,7 @@ export function ModesScreen({ onBack }: { onBack: () => void }) {
       ]),
     );
 
-    if (mode.id === "quick" || mode.id === "chaos" || mode.id === "raid") {
+    if (mode.id === "quick" || mode.id === "chaos" || mode.id === "raid" || mode.id === "doubles") {
       if (mode.id === "quick") setModeProgress({ quickWins: g.modes.quickWins + 1 });
       else if (mode.id === "chaos") setModeProgress({ chaosWins: g.modes.chaosWins + 1 });
       else setModeProgress({ raidWins: g.modes.raidWins + 1 });
@@ -240,6 +243,7 @@ export function ModesScreen({ onBack }: { onBack: () => void }) {
         arena={run.stage.arena}
         round={run.step}
         playerTeam={team}
+        doubles={run.mode.id === "doubles"}
         enemyTeam={run.stage.enemies}
         items={g.items}
         startState={Object.keys(run.carry).length ? run.carry : undefined}
@@ -423,7 +427,7 @@ export function ModesScreen({ onBack }: { onBack: () => void }) {
         </div>
         <div style={{ display: "grid", gap: 8 }}>
           {MODES.map((m) => {
-            const locked = g.playerLevel < m.requiredLevel;
+            const locked = g.playerLevel < m.requiredLevel || (m.id === "doubles" && team.length < 2);
             return (
               <button
                 key={m.id}
@@ -457,7 +461,7 @@ export function ModesScreen({ onBack }: { onBack: () => void }) {
                     {m.name}
                   </span>
                   <span className="mk-title" style={{ fontSize: 6, color: m.accent }}>
-                    {locked ? `PILOTO Lv${m.requiredLevel}` : m.tagline}
+                    {locked ? (m.id === "doubles" && g.playerLevel >= m.requiredLevel ? "MONTE 2+ ROBÔS NA EQUIPE" : `PILOTO Lv${m.requiredLevel}`) : m.tagline}
                   </span>
                 </div>
                 <div style={{ padding: 6, fontSize: 10, color: "var(--mk-muted)" }}>{m.desc}</div>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Icon, Panel, PixelButton } from "@/components/pixel";
 import { faceUrl, ROBOT_MAP } from "@/game/robots";
 import { teamAverageLevel } from "@/game/modes";
@@ -28,14 +28,26 @@ import {
 } from "@/game/ranked";
 import { BattleScreen } from "@/screens/battle";
 import { TopBar } from "@/screens/roster";
+import "./online-ranked.css";
 
-type View = "hub" | "brief" | "fight" | "result";
+type View = "hub" | "brief" | "fight" | "result" | "online";
+const OnlineScreen = lazy(() => import("@/screens/online").then(m => ({ default: m.OnlineScreen })));
 type Tab = "ladder" | "missions" | "rewards" | "history";
 
 /** limite de trocas de oponente por sessão. */
 const REROLL_LIMIT = 3;
 
+/** RANQUEADO = só online: fila no servidor com rating Elo (se a fila estiver vazia, às vezes o rival é um bot). */
 export function RankedScreen({ onBack }: { onBack: () => void }) {
+  return (
+    <Suspense fallback={<div className="mo-screen mo-center"><p className="mo-kicker">CONECTANDO AO SERVIDOR…</p></div>}>
+      <OnlineScreen backLabel="VOLTAR" rankedOnly onBack={onBack} />
+    </Suspense>
+  );
+}
+
+/** Ranqueada offline antiga (contra oponentes simulados) — mantida só como referência, fora do menu. */
+export function LegacyRankedScreen({ onBack }: { onBack: () => void }) {
   const g = useGame();
   const [view, setView] = useState<View>("hub");
   const [tab, setTab] = useState<Tab>("ladder");
@@ -266,6 +278,14 @@ export function RankedScreen({ onBack }: { onBack: () => void }) {
     );
   }
 
+  if (view === "online") {
+    return (
+      <Suspense fallback={<div className="mo-screen mo-center"><p className="mo-kicker">CONECTANDO AO SERVIDOR…</p></div>}>
+        <OnlineScreen backLabel="RANQUEADO" initialTab="ranked" onBack={() => setView("hub")} />
+      </Suspense>
+    );
+  }
+
   // ------------------------------------------------------------------- hub
   const rewards = rewardList(r);
   const ladder = leaderboard(r);
@@ -304,6 +324,13 @@ export function RankedScreen({ onBack }: { onBack: () => void }) {
               : rank.tier.desc}
           </div>
         </div>
+
+        {/* RANQUEADA ONLINE (servidor, PvP real) */}
+        <button className="mk-ranked-online" onClick={() => setView("online")}>
+          <span className="mk-ro-live" aria-hidden />
+          <span className="mk-ro-text"><b>RANQUEADA ONLINE</b><small>PvP REAL · RATING ELO NO SERVIDOR · TOP DO SERVIDOR</small></span>
+          <span aria-hidden>›</span>
+        </button>
 
         {/* PR / ESCUDO / PROMO */}
         {!placing && (

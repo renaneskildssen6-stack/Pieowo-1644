@@ -1,13 +1,16 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BattleScreen } from "@/screens/battle";
 import { spendItem, teamSaves, useGame } from "@/game/save";
 import { ITEM_MAP } from "@/game/config";
 import { ROBOT_MAP } from "@/game/robots";
 import {
-  SPEAKERS, STORY_CHAPTERS, storyArc, chapterUnlocked, completeStoryChapter, markStoryOpened, payStoryFight,
+  SAGAS, SPEAKERS, chapterSaga, chapterTag, nextChapter, completeStoryChapter, markStoryOpened, payStoryFight,
   setStoryFlag, storyEnemies, type SpeakerId, type StoryBattle, type StoryChapter, type StoryChoice, type StoryLine, type StoryBeat,
 } from "@/game/story";
+import { CAST_ALLIES } from "@/game/story-cast";
+import { StoryMap } from "./story-map";
 import "./story.css";
+import "./story-saga.css";
 
 type Mode = "map" | "scene" | "battle" | "defeat" | "result";
 interface Cursor { i: number; pending: StoryLine[] }
@@ -15,7 +18,7 @@ interface LogEntry { who: SpeakerId; text: string }
 interface ResultInfo { first: boolean; gold: number; xp: number; item?: string; qty?: number; fightGold: number; fightXp: number; levelUps: string[] }
 
 const reducedMotion = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-const ALLIES: SpeakerId[] = ["lyra", "lyra_orbit", "nara", "aurorion"];
+const ALLIES: SpeakerId[] = ["lyra", "lyra_orbit", "nara", "aurorion", ...CAST_ALLIES];
 
 export function StoryScreen({ onBack }: { onBack: () => void }) {
   const g = useGame();
@@ -104,7 +107,7 @@ export function StoryScreen({ onBack }: { onBack: () => void }) {
         playerTeam={team}
         enemyTeam={storyEnemies(beat)}
         items={g.items}
-        label={`CAP. ${chapter.num} · ${beat.label}`}
+        label={`CAP. ${chapterTag(chapter)} · ${beat.label}`}
         onUseItem={(id) => spendItem(id, 1)}
         onFinish={(r) => onFight(beat, r)}
       />
@@ -117,14 +120,14 @@ export function StoryScreen({ onBack }: { onBack: () => void }) {
 
   if (mode === "result" && result) {
     const item = result.item ? ITEM_MAP[result.item] : undefined;
-    const isFinal = chapter.num === STORY_CHAPTERS.length;
-    const nextIdx = STORY_CHAPTERS.findIndex((c) => c.id === chapter.id) + 1;
+    const isFinal = !!chapter.final;
+    const next = nextChapter(chapter);
     return (
       <div className="ms-root ms-result" data-testid="story-result">
         <img className="ms-bg is-still" src={chapter.art} alt="" />
         <div className="ms-shade" />
         <section className="ms-result-card">
-          <small>CAPÍTULO {chapter.num} CONCLUÍDO</small>
+          <small>CAPÍTULO {chapterTag(chapter)} CONCLUÍDO</small>
           <h2>{chapter.title}</h2>
           <ul>
             <li><span>Lutas</span><b>+{result.fightGold}g · +{result.fightXp} XP</b></li>
@@ -133,9 +136,9 @@ export function StoryScreen({ onBack }: { onBack: () => void }) {
               : <li><span>Estreia</span><b>já recebida — replays pagam só as lutas</b></li>}
             {result.levelUps.map((u) => <li key={u}><span>Evolução</span><b>{u}</b></li>)}
           </ul>
-          {isFinal && result.first && <p className="ms-epilogue">A cidade amanheceu. Obrigado por jogar as Crônicas da Primeira Luz.</p>}
+          {isFinal && <p className="ms-epilogue">{chapter.final}</p>}
           <div className="ms-result-actions">
-            {!isFinal && nextIdx < STORY_CHAPTERS.length && <button className="ai-plate is-primary" onClick={() => open(STORY_CHAPTERS[nextIdx])}>PRÓXIMO CAPÍTULO ▸</button>}
+            {next && <button className="ai-plate is-primary" onClick={() => open(next)}>PRÓXIMO CAPÍTULO ▸</button>}
             <button className="ai-plate" onClick={() => setMode("map")}>MAPA DA HISTÓRIA</button>
           </div>
         </section>
@@ -184,71 +187,6 @@ export function StoryScreen({ onBack }: { onBack: () => void }) {
       }}
       onExit={() => setMode("map")}
     />
-  );
-}
-
-// ------------------------------------------------------------------ mapa
-function StoryMap({ cleared, last, hasTeam, playerLevel, onOpen, onBack }: { cleared: string[]; last: string | null; hasTeam: boolean; playerLevel: number; onOpen: (c: StoryChapter) => void; onBack: () => void }) {
-  const focus = useRef<HTMLElement | null>(null);
-  const drag = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null);
-  const [mapView, setMapView] = useState({ x: 0, y: 0, zoom: 1 });
-  useEffect(() => { focus.current?.scrollIntoView({ block: "center", behavior: reducedMotion() ? "auto" : "smooth" }); }, []);
-  const nextOpen = STORY_CHAPTERS.findIndex((c, i) => chapterUnlocked(cleared, i) && !cleared.includes(c.id));
-  const points = STORY_CHAPTERS.map((c, i) => c.map ?? { x: 22 + (i % 2) * 44, y: 92 - i * 9, region: i < 6 ? "CINTURÃO AURORA" : "ROTA HELIX" });
-  const mapDown = (e: ReactPointerEvent<HTMLDivElement>) => {
-    e.currentTarget.setPointerCapture(e.pointerId);
-    drag.current = { x: e.clientX, y: e.clientY, ox: mapView.x, oy: mapView.y };
-  };
-  const mapMove = (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (!drag.current) return;
-    setMapView((v) => ({ ...v, x: drag.current!.ox + e.clientX - drag.current!.x, y: drag.current!.oy + e.clientY - drag.current!.y }));
-  };
-  const mapUp = () => { drag.current = null; };
-  const zoom = (delta: number) => setMapView((v) => ({ ...v, zoom: Math.max(.72, Math.min(1.8, +(v.zoom + delta).toFixed(2))) }));
-  return (
-    <div className="ms-root ms-map" data-testid="story-map">
-      <img className="ms-bg" src="/story/cover.webp" alt="" />
-      <div className="ms-shade" />
-      <header className="ms-map-head">
-        <button className="ai-plate" onClick={onBack}>← CIDADE</button>
-        <div>
-          <small>MODO HISTÓRIA</small>
-          <h1>CRÔNICAS DA PRIMEIRA LUZ</h1>
-        </div>
-        <span className="ms-progress" aria-label={`${cleared.length} de ${STORY_CHAPTERS.length} capítulos`}>{cleared.length}/{STORY_CHAPTERS.length}</span>
-      </header>
-      {!hasTeam && <p className="ms-warn">Conclua o tutorial e monte uma equipe no Hangar para lutar na história.</p>}
-      <section className="ms-route-panel" aria-label="Mapa de lugares da campanha">
-        <header className="ms-route-head"><div><small>ATLAS DE NAVEGAÇÃO · ARRASTE PARA EXPLORAR</small><h2>ROTA DA PRIMEIRA LUZ</h2></div><div className="ms-route-tools"><button className="ai-plate" aria-label="Afastar mapa" onClick={() => zoom(-.12)}>−</button><strong>{Math.round(mapView.zoom * 100)}%</strong><button className="ai-plate" aria-label="Aproximar mapa" onClick={() => zoom(.12)}>+</button><button className="ai-plate" onClick={() => setMapView({ x: 0, y: 0, zoom: 1 })}>CENTRAR</button></div></header>
-        <div className="ms-route-viewport" onPointerDown={mapDown} onPointerMove={mapMove} onPointerUp={mapUp} onPointerCancel={mapUp} onWheel={(e) => zoom(e.deltaY < 0 ? .06 : -.06)}>
-          <div className="ms-route-world" style={{ transform: `translate(${mapView.x}px, ${mapView.y}px) scale(${mapView.zoom})` }}>
-            <div className="ms-route-glow" />
-            <svg className="ms-route-lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><polyline points={points.map((p) => `${p.x},${p.y}`).join(" ")} /></svg>
-            {points.map((p, i) => { const c = STORY_CHAPTERS[i]; const unlocked = chapterUnlocked(cleared, i); const done = cleared.includes(c.id); return <button key={c.id} className={`ms-route-node${done ? " is-done" : ""}${unlocked ? "" : " is-locked"}${i === nextOpen ? " is-next" : ""}`} style={{ left: `${p.x}%`, top: `${p.y}%` }} disabled={!unlocked} onClick={() => onOpen(c)} aria-label={`${c.title}, ${p.region}, ${unlocked ? "disponível" : "bloqueado"}`}><span>{String(c.num).padStart(2, "0")}</span><b>{c.title}</b><small>{p.region}</small></button>; })}
-          </div>
-        </div>
-        <p className="ms-route-hint">PINÇA OU RODA DO MOUSE: ZOOM · ARRASTE COM UM DEDO: APROXIME-SE DE CADA REGIÃO</p>
-      </section>
-      <ol className="ms-chapters">
-        {STORY_CHAPTERS.map((c, i) => {
-          const unlocked = chapterUnlocked(cleared, i);
-          const done = cleared.includes(c.id);
-          const isFocus = (last ? c.id === last : i === Math.max(0, nextOpen));
-          return (
-            <li key={c.id} ref={isFocus ? (el) => { focus.current = el; } : undefined} className={`ms-chapter${done ? " is-done" : ""}${unlocked ? "" : " is-locked"}${i === nextOpen ? " is-next" : ""}`} style={{ ["--i" as string]: i }}>
-              <div className="ms-chapter-art"><img src={c.thumb} alt="" loading="lazy" /><span>{String(c.num).padStart(2, "0")}</span></div>
-              <div className="ms-chapter-body">
-                <small>{storyArc(c.num)} · {done ? "CONCLUÍDO" : unlocked ? (i === nextOpen ? "NOVO" : "DISPONÍVEL") : "BLOQUEADO"} · NV RECOMENDADO {c.recommended}{unlocked && !done && playerLevel < c.recommended ? " ⚠" : ""}</small>
-                <h2>{c.title}</h2>
-                <p>{unlocked ? c.synopsis : `Vença “${STORY_CHAPTERS[i - 1].title}” para liberar.`}</p>
-                <em>{done ? "Estreia recebida · replay paga as lutas" : `Estreia: ${c.reward.gold}g · ${c.reward.xp} XP · ${c.reward.qty}× ${ITEM_MAP[c.reward.item]?.name ?? c.reward.item}`}</em>
-              </div>
-              <button className={`ai-plate${unlocked && !done ? " is-primary" : ""}`} data-testid={`story-play-${c.id}`} disabled={!unlocked} onClick={() => onOpen(c)}>{done ? "REJOGAR" : unlocked ? "JOGAR" : "🔒"}</button>
-            </li>
-          );
-        })}
-      </ol>
-    </div>
   );
 }
 
@@ -339,7 +277,7 @@ function StoryScene({ chapter, beat, stepKey, log, onLine, onAdvance, onChoose, 
       {fx === "alarm" && <div className="ms-alarm" key={`a${stepKey}`} />}
 
       <header className="ms-scene-bar">
-        <span>CAP. {chapter.num} · {chapter.title}</span>
+        <span>CAP. {chapterTag(chapter)} · {chapter.title}</span>
         <div>
           <button className="ai-plate" aria-pressed={logOpen} onClick={() => setLogOpen((v) => !v)}>LOG</button>
           <button className="ai-plate" aria-pressed={auto} data-testid="story-auto" onClick={() => setAuto((v) => !v)}>AUTO</button>
@@ -404,7 +342,7 @@ function StoryScene({ chapter, beat, stepKey, log, onLine, onAdvance, onChoose, 
       {title && (
         <div className="ms-title-card" onClick={() => setTitle(false)} data-testid="story-title">
           <i className="ms-bar top" /><i className="ms-bar bottom" />
-          <small>CAPÍTULO {chapter.num}</small>
+          <small>{SAGAS[chapterSaga(chapter) - 1]?.short} · {chapter.tag ? "CONTO" : "CAPÍTULO"} {chapterTag(chapter)}</small>
           <h2>{chapter.title}</h2>
           <p>{chapter.subtitle}</p>
         </div>

@@ -90,7 +90,7 @@ export function GameShell() {
 
 function GameContent() {
   const [screen, setScreen] = useState<Screen>("menu");
-  const [entry, setEntry] = useState<"title" | "intro" | "tutorial" | "home" | "city" | "online">("title");
+  const [entry, setEntry] = useState<"title" | "intro" | "tutorial" | "home" | "city" | "online">(() => (import.meta.env.DEV && (new URLSearchParams(location.search).get("entry") as "home" | "city" | null)) || "title");
   const [practice, setPractice] = useState(false);
   const g = useGame();
   const { transition } = useGate();

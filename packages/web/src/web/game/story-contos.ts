@@ -1,0 +1,142 @@
+/**
+ * CONTOS DE AURORA — histórias paralelas (C1–C8) que liberam durante a Saga I.
+ * Cada conto tem `requires` explícito: abre quando o capítulo indicado é concluído.
+ */
+import { B, E, L, art, scene, type StoryChapter } from "./story-kit";
+
+const S = 4 as const;
+const ARC = "CONTOS DE AURORA";
+
+export const CONTOS: StoryChapter[] = [
+  {
+    id: "conto-divida", num: 101, saga: S, tag: "C1", arc: ARC, requires: "trono", title: "A DÍVIDA DO REI", subtitle: "Ferro-velho · Dias depois do trono",
+    synopsis: "O Rei da Sucata tem um irmão. E o Barão não gostou nada do que aconteceu com a coroa da família.",
+    art: art("ch2"), thumb: art("ch2-thumb"), recommended: 5, reward: { gold: 700, xp: 140, item: "repair_kit", qty: 3 }, map: { x: 26, y: 86, region: "FERRO-VELHO" },
+    beats: [
+      L("narrador", "Uma fornalha nova acende no ferro-velho. Maior. Mais quente. E com um brasão que ninguém conhecia."),
+      L("scrapbaron", "Então é você o piloto que humilhou o meu irmão. A família Sucata cobra as suas dívidas. Com juros."),
+      L("scrapking", "Barão, para! O garoto me poupou. Eu devo a ele, não o contrário.", undefined, ["rei", "poupou"]),
+      L("scrapking", "…Fala baixo, Barão. Eu ainda estou montando o meu núcleo de volta. Não quero outra surra.", undefined, ["rei", "desmontou"]),
+      L("scrapbaron", "Dívida é dívida, irmãozinho. Os catadores trabalham para quem tem a fornalha mais quente."),
+      L("nara", "Ele está usando a sucata do Rei para montar um exército. Se não pararmos agora, ele domina o distrito."),
+      B("conto-divida-1", "FERRO-VELHO · OS DOIS TRONOS", "foundry", E("npc_scrapking", 5), E("scrapbaron", 6)),
+      L("scrapbaron", "Isso… não estava na planilha.", "shake"),
+      L("scrapking", "Família é complicada, latão. Mas hoje eu escolhi o lado certo. Ou quase.", undefined, ["rei", "poupou"]),
+      L("scrapking", "Você me derrubou duas vezes. Acho que vou parar de construir tronos.", undefined, ["rei", "desmontou"]),
+      L("lyra", "O Barão vai voltar, mas sem fornalha. Bom trabalho, piloto."),
+    ],
+  },
+  {
+    id: "conto-mercado", num: 102, saga: S, tag: "C2", arc: ARC, requires: "espelhos", title: "MERCADO DA MEIA-NOITE", subtitle: "Distrito neon · Antes de tudo",
+    synopsis: "Muito antes do convite de cristal, uma hacker de catorze anos apostou tudo contra o Lord dos Dados.",
+    ...scene("s-neon"), recommended: 10, reward: { gold: 1800, xp: 360, item: "energy_cell", qty: 3 }, map: { x: 68, y: 74, region: "MERCADO NEON" },
+    beats: [
+      L("narrador", "A Banca do Destino nunca fecha. Lá, pilotos apostam núcleos inteiros num único lance de dados."),
+      L("mira", "Primeira lição do mercado: a banca sempre ganha. Segunda lição: a banca nunca viu a Mira."),
+      L("dicelord", "Mais uma criança com um truque. Aposte o seu robô, menina. Ou vá embora."),
+      L("mira", "Eu não tenho robô. Mas aquele piloto ali tem. Ei, você! Quer ganhar um amigo pra vida toda?"),
+      L("aurorion", "…Você está apostando em mim sem perguntar?"),
+      L("mira", "Estou apostando NO certo. Confia."),
+      B("conto-mercado-1", "BANCA DO DESTINO · TUDO OU NADA", "undercity", E("npc_dicelord", 10), E("neondrifter", 9)),
+      L("dicelord", "Dados viciados… e mesmo assim perdi? Quem é você?", "glitch"),
+      L("mira", "Pixel. Grava esse nome. Ah, e os núcleos que você roubou? Já devolvi pros donos enquanto você jogava."),
+      L("narrador", "Foi a primeira vez que o mercado ouviu falar de Mira “Pixel”. Não seria a última."),
+    ],
+  },
+  {
+    id: "conto-labirinto", num: 103, saga: S, tag: "C3", arc: ARC, requires: "segundos", title: "O LABIRINTO DE MUSGO", subtitle: "Jardins antigos · Neblina verde",
+    synopsis: "Um jardim que se rearranja sozinho. No centro, um guardião que nunca deixa ninguém sair.",
+    art: art("ch8"), thumb: art("ch8-thumb"), recommended: 13, reward: { gold: 2800, xp: 560, item: "shield_chip", qty: 3 }, map: { x: 30, y: 62, region: "LABIRINTO VERDE" },
+    beats: [
+      L("narrador", "As paredes de musgo se movem quando ninguém está olhando. Os mapas ficam errados em minutos."),
+      L("nara", "Sinais de três pilotos desaparecidos aqui dentro. Todos param no mesmo ponto: o centro."),
+      L("minotaur", "QUEM ENTRA NO LABIRINTO PERTENCE AO LABIRINTO. TODO CAMINHO LEVA AO MEU MACHADO.", "quake"),
+      L("aurorion", "Então eu sigo todos os caminhos de uma vez. Nara, marque as paredes que se mexem."),
+      B("conto-labirinto-1", "LABIRINTO · O CENTRO VERDE", "biodome", E("npc_minotaur", 13), E("mossknight", 12)),
+      L("minotaur", "Ninguém… nunca chegou ao centro de pé. O jardim agora… é seu.", "shake"),
+      L("nara", "Os pilotos estão aqui! Presos em casulos de musgo, mas vivos."),
+      L("lyra", "O labirinto não era uma prisão. Era um guardião que esqueceu o que guardava."),
+    ],
+  },
+  {
+    id: "conto-sereia", num: 104, saga: S, tag: "C4", arc: ARC, requires: "orbital", title: "A CANÇÃO DA SEREIA", subtitle: "Mar afundado · Dez anos atrás",
+    synopsis: "Antes de ser capitã, Juno era uma grumete. E houve uma noite em que o mar cantou.",
+    art: art("ch7"), thumb: art("ch7-thumb"), recommended: 19, reward: { gold: 4500, xp: 900, item: "mega_repair", qty: 2 }, map: { x: 70, y: 52, region: "MAR AFUNDADO" },
+    beats: [
+      L("juno", "Vou contar uma história, piloto. Eu tinha doze anos e limpava o convés de um cargueiro."),
+      L("narrador", "Era uma noite sem lua. E então, sob as ondas, uma voz começou a cantar."),
+      L("sirenfall", "Venham, navios cansados. Durmam no fundo. Lá embaixo não há tempestade.", "glitch"),
+      L("juno", "A tripulação inteira pulou no mar. Eu tapei os ouvidos com graxa e peguei o leme. E um mecha apareceu."),
+      L("aurorion", "Você está me colocando na sua história?"),
+      L("juno", "Estou te colocando no lugar de quem me salvou. Para ver se você é tão bom quanto ele."),
+      B("conto-sereia-1", "MAR AFUNDADO · A CANÇÃO", "sunken", E("sirenfall", 19), E("coralshiv", 18)),
+      L("sirenfall", "Por que… ninguém resiste à minha voz…", "shake"),
+      L("juno", "Foi naquela noite que eu jurei: ninguém afunda o meu navio. Nunca mais."),
+      L("juno", "Por isso a frota se chama Vento-Livre. Livre até da música mais bonita."),
+    ],
+  },
+  {
+    id: "conto-lanternas", num: 105, saga: S, tag: "C5", arc: ARC, requires: "arquivo", title: "LANTERNAS NO CEMITÉRIO", subtitle: "Cemitério de mechas · Noite de finados",
+    synopsis: "Todo ano, uma lanterna se acende entre as carcaças. Dizem que ela espera um piloto que nunca voltou.",
+    art: art("ch10"), thumb: art("ch10-thumb"), recommended: 29, reward: { gold: 10500, xp: 2200, item: "revive_core", qty: 3 }, map: { x: 28, y: 40, region: "CEMITÉRIO DE MECHAS" },
+    beats: [
+      L("narrador", "Mil mechas aposentados descansam em fileiras. Uma única luz verde flutua entre eles."),
+      L("lanternghast", "Você… não é ele. Mas tem o mesmo jeito de andar. O meu piloto também andava assim."),
+      L("nara", "Leituras estranhas. Programas antigos estão acordando nas carcaças. Algo está roubando a memória deles."),
+      L("narrador", "Um vírus de cemitério se espalha, comendo os últimos registros dos mechas mortos."),
+      L("lanternghast", "Se ele apagar as memórias, eu esqueço o rosto do meu piloto. Por favor."),
+      B("conto-lanternas-1", "CEMITÉRIO · O DEVORADOR DE MEMÓRIAS", "graveyard", E("gravebyte", 29), E("lanternghast", 28)),
+      L("lanternghast", "Desculpe por lutar contra você. O vírus mandava. Mas eu ainda lembro… lembro dele.", "flash"),
+      L("aurorion", "Qual era o nome dele?"),
+      L("lanternghast", "Não importa mais. Agora eu tenho um rosto novo para lembrar. O seu."),
+    ],
+  },
+  {
+    id: "conto-discipulo", num: 106, saga: S, tag: "C6", arc: ARC, requires: "primeira", title: "O DISCÍPULO", subtitle: "Dojo de Kaminari · Quinze anos atrás",
+    synopsis: "Dois alunos, um mestre e uma montanha. A história de Lyra e Kael antes do Eclipse.",
+    ...scene("s-dojo"), recommended: 37, reward: { gold: 21000, xp: 5200, item: "power_chip", qty: 3 }, map: { x: 70, y: 30, region: "MONTANHA KAMINARI" },
+    beats: [
+      L("narrador", "Neblina na montanha. Dois adolescentes discutem quem vai pilotar o mecha de treino primeiro."),
+      L("kael", "Eu sou mais rápido, Lyra. Você pensa demais antes de atacar."),
+      L("lyra", "E você ataca antes de pensar. Por isso cai tanto."),
+      L("haru", "Os dois estão certos e os dois estão errados. Hoje, lutam juntos. Contra os meus guardiões."),
+      L("narrador", "Você assume o mecha de treino. Esta lembrança é de Lyra — mas o piloto, desta vez, é você."),
+      B("conto-discipulo-1", "DOJO · O TESTE DO MESTRE", "dojo", E("cobaltronin", 37), E("ronin_akatsu", 36)),
+      L("haru", "Kael, você deixou a guarda aberta para salvar Lyra. Lyra, você esperou o momento certo por ele."),
+      L("haru", "Um sem o outro, vocês serão bons. Juntos, serão campeões. Lembrem disso quando brigarem."),
+      L("kael", "Promete, Lyra? Que a gente nunca vai lutar um contra o outro?"),
+      L("lyra", "Prometo. …Eu queria ter cumprido essa promessa.", "shake"),
+    ],
+  },
+  {
+    id: "conto-invencao", num: 107, saga: S, tag: "C7", arc: ARC, requires: "tempestade", title: "A INVENÇÃO PROIBIDA", subtitle: "Laboratório norte · Guerra Fundadora",
+    synopsis: "O jovem Otto testa um protótipo que fala com máquinas. O primeiro rascunho do Condutor.",
+    ...scene("s-lab"), recommended: 45, reward: { gold: 29000, xp: 7400, item: "energy_cell", qty: 10 }, map: { x: 30, y: 20, region: "LABORATÓRIO NORTE" },
+    beats: [
+      L("narrador", "Cem anos atrás. Sirenes de guerra. Um inventor magro escreve código em pautas musicais."),
+      L("otto", "Se as máquinas obedecem a sinais, por que não a uma música? Uma melodia de paz."),
+      L("circuitmonk", "PROTÓTIPO ATIVO. MELODIA RECEBIDA. TRADUZINDO: “OBEDEÇA.”", "glitch"),
+      L("otto", "Não, não, não! Eu escrevi “descanse”, não “obedeça”! Volte!"),
+      L("narrador", "As ferramentas do laboratório acordam ao mesmo tempo, todas no mesmo compasso."),
+      B("conto-invencao-1", "LABORATÓRIO · O PRIMEIRO COMPASSO", "foundry", E("circuitmonk", 45), E("solderjack", 44)),
+      L("otto", "Desligado. Por pouco. Ninguém pode saber que isso funcionou.", "shake"),
+      L("otto", "Vou esconder as partituras. E rezar para que ninguém, nunca, toque essa música de novo."),
+      L("narrador", "Ele guardou as partituras numa gaveta. A gaveta ficou na torre. E a torre esperou."),
+    ],
+  },
+  {
+    id: "conto-profecia", num: 108, saga: S, tag: "C8", arc: ARC, requires: "asgard", title: "A PROFECIA DE ÍRIS", subtitle: "Templo das Estrelas · Fora do tempo",
+    synopsis: "Íris lê pela primeira vez o nome de um mecha que ainda não existe: Aurorion.",
+    ...scene("s-oraculo"), recommended: 57, reward: { gold: 58000, xp: 14000, item: "revive_core", qty: 6 }, map: { x: 66, y: 10, region: "TEMPLO DAS ESTRELAS" },
+    beats: [
+      L("iris", "Toda oráculo tem uma primeira visão. A minha foi uma nota. Uma nota que ninguém sabia tocar."),
+      L("iris", "Eu vi um mecha de luz recusando uma melodia perfeita. E vi a partitura do mundo rasgar ao meio."),
+      L("nebulaseer", "Visões assim não podem sair do templo. O futuro fica onde está.", "zoom"),
+      L("iris", "Os vigias querem apagar a profecia. Piloto, você está dentro da minha memória. Defenda-a."),
+      B("conto-profecia-1", "TEMPLO · AS ESTRELAS QUE CALAM", "aurora", E("nebulaseer", 57), E("cosmoveil", 57)),
+      L("iris", "Obrigada. Agora eu sei por que a visão mostrava você."),
+      L("aurorion", "Por quê?"),
+      L("iris", "Porque você ainda vai me encontrar. Num templo, com perguntas demais. E eu vou sorrir, como agora.", "flash"),
+    ],
+  },
+];

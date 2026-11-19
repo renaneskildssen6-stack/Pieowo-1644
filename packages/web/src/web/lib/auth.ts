@@ -1,20 +1,16 @@
 import { createAuthClient } from "better-auth/react";
 import { managedAuthClient } from "@runablehq/managed-auth/client";
+import { apiOrigin } from "./origin";
 
 const config = {
   applicationId: import.meta.env.VITE_APPLICATION_ID as string,
   issuer: import.meta.env.VITE_RUNABLE_AUTH_ISSUER as string,
 };
 
-// O APK offline serve o jogo por file://; essa origem não é uma URL HTTP válida
-// para o cliente Better Auth. Mantemos um endpoint inerte para que o boot não
-// quebre e o login online continue usando a origem normal na web.
-const runtimeOrigin = window.location.protocol === "file:" || window.location.origin === "null"
-  ? "http://localhost"
-  : window.location.origin;
+// No APK (file://) a origem vem de lib/origin (endereço publicado do jogo).
 
 export const authClient = createAuthClient({
-  baseURL: runtimeOrigin,
+  baseURL: apiOrigin(),
   basePath: "/api/auth",
   plugins: [managedAuthClient(config)],
 });

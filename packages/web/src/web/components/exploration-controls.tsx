@@ -24,7 +24,8 @@ export function ExplorationControls({ onMove, onJump, onJumpEnd, onAttack, onSpe
   }, []);
   useEffect(() => { if (disabled) reset(); }, [disabled]);
   const update = (clientX: number, clientY: number) => {
-    const r = stick.current!.getBoundingClientRect();
+    const el = stick.current; if (!el) return;
+    const r = el.getBoundingClientRect();
     const radius = r.width * .34;
     let x = (clientX - r.left - r.width / 2) / radius;
     let y = (clientY - r.top - r.height / 2) / radius;

@@ -9,11 +9,21 @@ const allowed = new Set(CATALOG_IDS);
 export function validateTeam(ids: string[]): void {
   if (ids.length < 1 || ids.length > 4 || new Set(ids).size !== ids.length || ids.some(id => !allowed.has(id))) throw new Error("Escolha de 1 a 4 robôs únicos do catálogo de 256.");
 }
-export function competitiveCombat(host: string[], guest: string[]): Combat {
+const ARENAS = ["neodojo", "neodojo", "dojo", "sky", "frozen", "volcano", "orbital"];
+/** Equipe aleatória do catálogo para vagas de IA. */
+export function botTeam(size: number, avoid: string[] = []): string[] {
+  const pool = CATALOG_IDS.filter(id => !avoid.includes(id)); const out: string[] = [];
+  while (out.length < size && pool.length) out.push(pool.splice(randomInt(0, pool.length), 1)[0]);
+  return out;
+}
+/** Combate competitivo. `bots` = índices globais (player0.., enemy0..) controlados pela IA do servidor. */
+export function competitiveCombat(host: string[], guest: string[], opts: { doubles?: boolean; botUids?: string[] } = {}): Combat {
   validateTeam(host); validateTeam(guest);
   if (host.length !== guest.length) throw new Error("As equipes precisam ter o mesmo tamanho.");
   const robot = (id: string): RobotSave => ({ id, level: COMPETITIVE_LEVEL, xp: 0, trained: { str: 0, def: 0, agl: 0 }, borrowed: true, gadgetLevel: 0 });
-  const c = createCombat({ arena: "neodojo", pvp: true, playerTeam: host.map(robot), enemyTeam: guest.map(robot), items: {}, difficulty: "normal" });
+  const arena = opts.doubles ? ARENAS[randomInt(0, ARENAS.length)] : "neodojo";
+  const c = createCombat({ arena, pvp: true, doubles: opts.doubles, mode: opts.doubles ? "team" : undefined, playerTeam: host.map(robot), enemyTeam: guest.map(robot), items: {}, difficulty: "normal" });
+  if (opts.botUids?.length) c.botUids = [...opts.botUids];
   c.rngSalt = randomInt(1, 2 ** 31 - 1);
   resolveRound(c);
   return c;

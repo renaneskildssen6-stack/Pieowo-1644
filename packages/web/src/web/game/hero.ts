@@ -76,3 +76,94 @@ export function heroSheet(robotId: string): string {
 export function heroFace(robotId: string): string {
   return faceUrl(robotId);
 }
+
+/* ---------------------------------------------------------------------------
+ * Pose procedural de locomocao: ciclo de passos com pulinho, squash/stretch
+ * no apoio, balanco alternado e inclinacao para frente. Compartilhado por
+ * casa, cidade, mapa e torneio para o andar ficar consistente.
+ * ------------------------------------------------------------------------- */
+export type HeroPose = { dy: number; rot: number; sx: number; sy: number; shadow: number; footfall: boolean };
+
+const lastStep = new WeakMap<object, number>();
+
+/** pose do heroi. `key` (qualquer objeto estavel) detecta o instante do passo. */
+export function heroPose(clip: HeroClip, time: number, key?: object): HeroPose {
+  const moving = clip === "walk" || clip === "run";
+  if (!moving) {
+    const breath = Math.sin(time * 3.2);
+    if (key) lastStep.delete(key);
+    return clip === "idle"
+      ? { dy: breath * 0.8, rot: 0, sx: 1 - breath * 0.012, sy: 1 + breath * 0.018, shadow: 1, footfall: false }
+      : { dy: 0, rot: HERO_CLIPS[clip].tilt, sx: 1, sy: 1, shadow: clip === "jump" || clip === "fall" ? 0.6 : 1, footfall: false };
+  }
+  const run = clip === "run";
+  const rate = run ? 3.4 : 2.2; // passos por segundo / 2 (ciclo = 2 passos)
+  const ph = time * rate * Math.PI * 2;
+  const lift = Math.abs(Math.sin(ph)); // 0 = pe no chao, 1 = topo do passo
+  const amp = run ? 7 : 4.2;
+  const contact = 1 - lift;
+  const squash = Math.pow(contact, 3);
+  let footfall = false;
+  if (key) {
+    const step = Math.floor((ph + Math.PI / 2) / Math.PI);
+    const prev = lastStep.get(key);
+    if (prev !== undefined && prev !== step) footfall = true;
+    lastStep.set(key, step);
+  }
+  return {
+    dy: -lift * amp,
+    rot: (run ? 0.12 : 0.05) + Math.sin(ph) * (run ? 0.05 : 0.07),
+    sx: 1 + squash * (run ? 0.08 : 0.05),
+    sy: 1 - squash * (run ? 0.09 : 0.06) + lift * 0.03,
+    shadow: 1 - lift * 0.25,
+    footfall,
+  };
+}
+
+/** desenha um quadro do heroi com a pose, ancorado nos pes em (0,0). */
+export function drawHeroPosed(
+  ctx: CanvasRenderingContext2D,
+  sheet: CanvasImageSource,
+  frame: number,
+  size: number,
+  pose: HeroPose,
+) {
+  ctx.save();
+  ctx.translate(0, pose.dy);
+  ctx.rotate(pose.rot);
+  ctx.scale(pose.sx, pose.sy);
+  ctx.drawImage(sheet, frame * HERO_FRAME, 0, HERO_FRAME, HERO_FRAME, -size / 2, -size, size, size);
+  ctx.restore();
+}
+
+type Dust = { x: number; y: number; vx: number; life: number; r: number };
+const dustStore = new WeakMap<object, Dust[]>();
+
+/** levanta poeira no passo; x/y em coordenadas de tela, face = direcao. */
+export function kickDust(key: object, x: number, y: number, face: number, strong = false) {
+  const list = dustStore.get(key) ?? [];
+  const n = strong ? 4 : 2;
+  for (let i = 0; i < n; i++) list.push({ x: x - face * (6 + i * 4), y: y - 2, vx: -face * (18 + Math.random() * 30), life: 0, r: 3 + Math.random() * 3 });
+  if (list.length > 40) list.splice(0, list.length - 40);
+  dustStore.set(key, list);
+}
+
+/** anda e desenha a poeira (blocos pixelados que sobem e somem). */
+export function drawDust(ctx: CanvasRenderingContext2D, key: object, dt: number, color = "#c9d6e6") {
+  const list = dustStore.get(key);
+  if (!list?.length) return;
+  ctx.save();
+  ctx.fillStyle = color;
+  for (let i = list.length - 1; i >= 0; i--) {
+    const d = list[i];
+    d.life += dt;
+    if (d.life > 0.45) { list.splice(i, 1); continue; }
+    d.x += d.vx * dt;
+    d.y -= 22 * dt;
+    const k = d.life / 0.45;
+    const s = Math.round(d.r * (1 + k));
+    ctx.globalAlpha = 0.55 * (1 - k);
+    ctx.fillRect(Math.round(d.x - s / 2), Math.round(d.y - s / 2), s, s);
+  }
+  ctx.restore();
+}

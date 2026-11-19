@@ -8,7 +8,7 @@ import { systemUnlocked } from "@/game/progression";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Screen } from "@/screens/menu";
 import { useGate } from "@/components/gate";
-import { HERO_CLIPS, HERO_FRAME, clipFrame, heroFace, heroSheet, type HeroClip } from "@/game/hero";
+import { HERO_CLIPS, HERO_FRAME, clipFrame, heroFace, heroSheet, heroPose, kickDust, drawDust, type HeroClip } from "@/game/hero";
 import { ROBOT_MAP } from "@/game/robots";
 import { explorerId, setExplorer, useGame } from "@/game/save";
 import { SKY_SHEET, TRAFFIC_ATLAS, drawSearchlights, drawSky, drawTraffic, type BackdropCam } from "./city-backdrop";
@@ -717,7 +717,10 @@ export function HubCity({ onEnter, enabled=true }: { onEnter: (s: Exclude<Screen
         const sq = 1 + P.squash;
         const dw = (SPR * def.scale) / sq;
         const dh = SPR * def.scale * sq;
-        const bob = def.bob ? Math.sin(t * def.fps * 1.6) * def.bob : 0;
+        const pose = heroPose(P.clip, t, P);
+        const bob = pose.dy;
+        if (pose.footfall && GROUND_Y - P.y < 4) kickDust(P, P.x - cx, GROUND_Y - cy + z.current * .42, P.face, P.clip === "run");
+        drawDust(ctx, P, 1 / 60);
         // sombra (encolhe no ar)
         const air = Math.max(0, Math.min(1, (GROUND_Y - P.y) / 220));
         ctx.globalAlpha = 0.35 * (1 - air * 0.6);
@@ -728,8 +731,8 @@ export function HubCity({ onEnter, enabled=true }: { onEnter: (s: Exclude<Screen
         ctx.translate(P.x - cx, P.y - cy + bob + z.current*.42);
         const perspective=1+z.current*.001;
         ctx.scale(P.face*perspective, perspective);
-        if (def.tilt) ctx.rotate(def.tilt);
-        ctx.drawImage(sheet, sx, 0, HERO_FRAME, HERO_FRAME, -dw / 2, -dh, dw, dh);
+        ctx.rotate(pose.rot);
+        ctx.drawImage(sheet, sx, 0, HERO_FRAME, HERO_FRAME, (-dw * pose.sx) / 2, -dh * pose.sy, dw * pose.sx, dh * pose.sy);
         ctx.restore();
         // brilho de impulso ao correr
         if (P.clip === "run" && Math.random() < 0.4) {

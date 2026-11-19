@@ -3,7 +3,7 @@ import type { Screen } from '@/screens/menu';
 import { explorerId, setExplorer, useGame } from '@/game/save';
 import { systemUnlocked, UNLOCK_LEVEL } from '@/game/progression';
 import { droneLevel } from '@/game/drone-system';
-import { HERO_FRAME, clipFrame, heroFace, heroSheet, type HeroClip } from '@/game/hero';
+import { clipFrame, heroFace, heroSheet, heroPose, drawHeroPosed, type HeroClip } from '@/game/hero';
 import { ROBOT_MAP } from '@/game/robots';
 import { ExplorationControls } from './exploration-controls';
 import { useGate } from './gate';
@@ -29,7 +29,7 @@ type Visual={clip:HeroClip;near:string|null;attack:boolean};
 export function HomeLab({onEnter,onExit,enabled=true}:{onEnter:(id:Exclude<Screen,'menu'>)=>void;onExit:()=>void;enabled?:boolean}){
  const g=useGame();const hero=explorerId(g);const {transition,busy}=useGate();
  const root=useRef<HTMLElement>(null);const canvas=useRef<HTMLCanvasElement>(null);
- const worldNode=useRef<HTMLDivElement>(null);const avatarNode=useRef<HTMLDivElement>(null);const progressMeter=useRef<HTMLSpanElement>(null);
+ const worldNode=useRef<HTMLDivElement>(null);const avatarNode=useRef<HTMLDivElement>(null);const dust=useRef<HTMLSpanElement>(null);const progressMeter=useRef<HTMLSpanElement>(null);
  const coreNodes=useRef<(HTMLSpanElement|null)[]>([]);
  const p=useRef<Player>({x:825,y:0,vx:0,vy:0,face:1,grounded:true,coyote:.11,jumps:0});
  const keys=useRef({left:false,right:false,run:false,jumpHeld:false});const analog=useRef(0);
@@ -111,7 +111,9 @@ export function HomeLab({onEnter,onExit,enabled=true}:{onEnter:(id:Exclude<Scree
    const clip:HeroClip=actionNow?actionClip.current:!P.grounded?P.vy>0?'jump':'fall':Math.abs(P.vx)>WALK+12?'run':Math.abs(P.vx)>8?'walk':'idle';
    if(previousClip!==clip){previousClip=clip;clipT=0}else clipT+=dt;
    ctx.clearRect(0,0,128,128);
-   const im=image.current;if(im?.complete&&im.naturalWidth){const f=clipFrame(clip,clipT);ctx.drawImage(im,f*HERO_FRAME,0,HERO_FRAME,HERO_FRAME,0,0,128,128)}
+   const im=image.current;if(im?.complete&&im.naturalWidth){const f=clipFrame(clip,clipT);const pose=heroPose(clip,now/1000,P);
+    if(pose.footfall&&P.grounded&&dust.current){const d=dust.current;d.style.left=`${P.x-P.face*10}px`;d.classList.remove('is-on');void d.offsetWidth;d.classList.add('is-on')}
+    ctx.save();ctx.translate(64,124);drawHeroPosed(ctx,im,f,116,pose);ctx.restore()}
    const viewport=root.current?.clientWidth||480;
    const target=Math.max(0,Math.min(WORLD-viewport,P.x-viewport*.46+P.face*26));
    camera+=(target-camera)*Math.min(1,dt*7);
@@ -156,6 +158,7 @@ export function HomeLab({onEnter,onExit,enabled=true}:{onEnter:(id:Exclude<Scree
     return <button className={`mc-home-station ${s.id==='exit'?'exit':s.id==='engineer'?'forge':''}`} key={s.id} style={{left:s.x}} onClick={interact} disabled={!active||!unlocked||!nearby} aria-label={`${s.label}: ${s.sub}${!unlocked?` · desbloqueia no nível ${UNLOCK_LEVEL[s.id as Exclude<Screen,'menu'>]}`:''}`}>
      <span className="mc-home-station-icon"><img src={`/${s.id==='engineer'?'mining':'city'}-sprites/${String(s.art).padStart(3,'0')}.png`} alt=""/></span><strong>{s.label}</strong><small>{s.sub}</small><i>{!unlocked?`DESBLOQUEIA NV ${UNLOCK_LEVEL[s.id as Exclude<Screen,'menu'>]}`:nearby?'INTERAGIR →':'APROXIME-SE →'}</i>
     </button>})}
+   <span ref={dust} className="mc-home-dust" aria-hidden><i/><i/><i/></span>
    <div ref={avatarNode} className="mc-home-avatar" style={{left:825,transform:'translateX(-50%)'}}><div className={`mc-home-hero ${v.clip} ${v.attack?'acting':''}`}><canvas ref={canvas} width={128} height={128} aria-label="Animação do piloto"/>{droneLevel(g,hero)>0&&<img className="mc-home-drone" src={`/drones/${hero}_drone.png?v=3`} alt=""/>}</div><span>VOCÊ</span></div>
   </div>
   <div className="mc-home-top"><span className="mc-home-mark">MC</span><div><small>BASE DO PILOTO · SETOR 01</small><strong>SEU LABORATÓRIO</strong></div><span className="mc-home-pilot">NV {g.playerLevel}<br/>NÚCLEOS {score}</span></div>

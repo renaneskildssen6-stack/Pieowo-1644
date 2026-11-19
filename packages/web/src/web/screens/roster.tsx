@@ -9,7 +9,7 @@ import { baseStats, maxTrained, robotMaxXP, type RobotSave } from "@/game/engine
 import { setTeam, useGame } from "@/game/save";
 import { trainRobotStat } from "@/game/economy-actions";
 import { TeamWorkbench } from "@/components/team-workbench";
-import { RobotBust } from "@/components/robot-bust";
+import { HangarCardArt, HangarSkinBar, HangarStageRobot } from "@/components/hangar-skin";
 import { ScreenBoundary } from "@/components/screen-boundary";
 import { isCustom } from "@/game/lab";
 import { portraitUrl, ROBOT_MAP, ROBOTS } from "@/game/robots";
@@ -136,7 +136,7 @@ export function RosterScreen({ onBack }: { onBack: () => void }) {
               style={{ imageRendering: "pixelated" }}
             />
           ) : (
-            <RobotBust robotId={focus} size={184} />
+            <HangarStageRobot robotId={focus} />
           )}
         </div>
 
@@ -202,6 +202,8 @@ export function RosterScreen({ onBack }: { onBack: () => void }) {
           TREINAR / INFO
         </PixelButton>
       </div>
+
+      {!locked && <HangarSkinBar robotId={focus} />}
 
       {/* FILTROS ESTILO BRAWL STARS */}
       <div
@@ -323,16 +325,7 @@ export function RosterScreen({ onBack }: { onBack: () => void }) {
                 }}
               >
                 <Frame rarity={def.rarity} size={68}>
-                  <img
-                    src={portraitUrl(def.id)}
-                    alt=""
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      imageRendering: "pixelated",
-                      filter: isLocked ? "grayscale(1) brightness(0.3) contrast(1.2)" : undefined,
-                    }}
-                  />
+                  <HangarCardArt robotId={def.id} locked={isLocked} />
                 </Frame>
                 <span
                   className="mk-title"

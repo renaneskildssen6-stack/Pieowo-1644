@@ -18,6 +18,7 @@ import {
   type RobotDef,
 } from "./robots";
 import { buildKit, VFX, type SkillEffect } from "./skills";
+import { draftSynergy } from "./lab-synergy";
 
 export const LAB_PREFIX = "lab_";
 export const isCustom = (id: string): boolean => id.startsWith(LAB_PREFIX);
@@ -275,6 +276,8 @@ export function draftStats(d: LabDraft): PartStats {
 /** Converte stats brutos + núcleo nos ratios usados pela engine. */
 export function draftRatios(d: LabDraft): Ratios {
   const s = draftStats(d);
+  const syn = draftSynergy(d).bonus;
+  for (const k of STAT_KEYS) s[k] += syn[k];
   const core = CORE_MAP[d.core] ?? CORES[0];
   const mix = (v: number, bonus = 0) => Math.max(70, Math.min(140, 74 + v + bonus));
   return {

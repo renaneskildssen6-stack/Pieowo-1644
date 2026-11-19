@@ -1,5 +1,6 @@
 import { buildKit, VFX, type Skill, type SkillEffect } from "./skills";
 import { NPC_DEFS } from "./enemies";
+import { GACHA_BLUEPRINTS } from "./gacha-robots";
 
 export type {
   EffectType,
@@ -3139,7 +3140,7 @@ const BLUEPRINTS: Blueprint[] = [
   // --- FIM ROSTER LOTE 2 ---
 ];
 
-export const ROBOTS: RobotDef[] = BLUEPRINTS.map((b) => ({
+export const ROBOTS: RobotDef[] = [...BLUEPRINTS, ...(GACHA_BLUEPRINTS as Blueprint[])].map((b) => ({
   id: b.id,
   name: b.name,
   element: b.element,

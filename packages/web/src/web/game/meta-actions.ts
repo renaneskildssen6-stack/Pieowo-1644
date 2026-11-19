@@ -210,7 +210,7 @@ export function buySkin(id: string): boolean {
 }
 export function applySkin(robotId: string, id: string | null) {
   setState((x) => {
-    if(!x.robots.some(r=>r.id===robotId)||id&&(!SKIN_MAP[id]||!x.skinsOwned.includes(id)))return x;
+    if(!x.robots.some(r=>r.id===robotId)||id&&(!SKIN_MAP[id]||!x.skinsOwned.includes(id)||(SKIN_MAP[id].robot&&SKIN_MAP[id].robot!==robotId)))return x;
     const skinOf = { ...x.skinOf };
     if (id) skinOf[robotId] = id;
     else delete skinOf[robotId];

@@ -1,0 +1,27 @@
+.mor-card{display:flex;gap:12px;align-items:center;margin:10px 12px 0;padding:10px 12px;background:linear-gradient(90deg,color-mix(in srgb,var(--tier) 22%,#06101a),#06101a 70%);border:2px solid var(--tier);box-shadow:0 0 0 2px #000 inset}
+.mor-card img{image-rendering:pixelated;filter:drop-shadow(0 0 6px var(--tier));flex:none}
+.mor-info{flex:1;min-width:0}
+.mor-info small{display:block;font:6px 'Press Start 2P',monospace;color:#6c8aa0;letter-spacing:1px}
+.mor-info strong{display:block;margin:6px 0;font:11px 'Press Start 2P',monospace;color:var(--tier);text-shadow:2px 2px 0 #000}
+.mor-bar{height:8px;background:#02070c;border:1px solid #000;box-shadow:0 0 0 1px color-mix(in srgb,var(--tier) 50%,transparent)}
+.mor-bar i{display:block;height:100%;background:var(--tier);transition:width .4s}
+.mor-info p{display:flex;flex-wrap:wrap;gap:4px 10px;margin:6px 0 0;font:6px 'Press Start 2P',monospace;color:#9fb3c4}
+.mor-info p b{color:#fff;font-size:8px}
+.mor-hot{color:#ff8a3a}
+.mor-leaders li{grid-template-columns:24px 1fr auto auto}
+.mor-leaders li span{display:flex;gap:6px;align-items:center}
+.mor-leaders li img{image-rendering:pixelated;flex:none}
+.mor-leaders li b{color:var(--tier)}
+.mor-leaders li small{color:#8aa0b2;font:6px 'Press Start 2P',monospace}
+.mor-delta{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 74px);transform:translateX(-50%);z-index:300;padding:8px 14px;font:10px 'Press Start 2P',monospace;background:#06101a;border:2px solid #57d76a;color:#57d76a;text-shadow:2px 2px 0 #000}
+.mor-delta[data-up=false]{border-color:#ff6b5e;color:#ff6b5e}
+.mo-tabs.mo-tabs4 button{font-size:6px;padding-left:4px;padding-right:4px}
+@media (prefers-reduced-motion:reduce){.mor-bar i{transition:none}}
+.mk-ranked-online{display:flex;align-items:center;gap:10px;width:100%;margin-top:8px;padding:10px 12px;background:linear-gradient(90deg,#3a0f1e,#06101a);border:2px solid #ff5ea8;color:#fff;font:inherit;cursor:pointer;text-align:left;box-shadow:0 3px 0 #000}
+.mk-ranked-online:active{transform:translateY(2px);box-shadow:0 1px 0 #000}
+.mk-ro-live{width:10px;height:10px;flex:none;background:#ff3d6e;box-shadow:0 0 8px #ff3d6e;animation:mk-ro-pulse 1.2s steps(2) infinite}
+.mk-ro-text{flex:1;display:flex;flex-direction:column;gap:5px}
+.mk-ro-text b{font:9px 'Press Start 2P',monospace;color:#ff8fc2;text-shadow:2px 2px 0 #000}
+.mk-ro-text small{font:6px 'Press Start 2P',monospace;color:#9fb3c4}
+@keyframes mk-ro-pulse{50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){.mk-ro-live{animation:none}}

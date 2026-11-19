@@ -24,7 +24,7 @@ export function RobotSprite({
   loop?: boolean;
   onDone?: () => void;
   dim?: boolean;
-  skin?: { filter: string; aura?: string } | null;
+  skin?: { filter: string; aura?: string; sprite?: string } | null;
 }) {
   const frames = ANIM[clip];
   const doneRef = useRef(onDone);
@@ -54,14 +54,14 @@ export function RobotSprite({
         filter: dim
           ? "grayscale(1) brightness(0.5)"
           : skin
-            ? `${skin.filter}${skin.aura ? ` drop-shadow(0 0 5px ${skin.aura}) drop-shadow(0 0 10px ${skin.aura})` : ""}`
+            ? `${skin.filter}${skin.aura ? ` drop-shadow(0 0 5px ${skin.aura}) drop-shadow(0 0 10px ${skin.aura})` : ""}` || undefined
             : undefined,
       }}
     >
       {droneLevel(getState(),robotId)>0&&<img className="mc-drone-companion" src={`/drones/${robotId}_drone.png?v=3`} alt="Drone de vínculo" style={{position:"absolute",right:0,top:0,width:size*.3,height:size*.3,zIndex:2}}/>}
       <img
         key={`${clip}-${fps}-${loop ? 1 : 0}`}
-        src={spriteUrl(robotId)}
+        src={skin?.sprite ?? spriteUrl(robotId)}
         alt=""
         draggable={false}
         style={{

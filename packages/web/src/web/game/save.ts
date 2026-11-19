@@ -9,6 +9,7 @@ import { playerMaxXP, statHooks, type RobotSave } from "./engine";
 import { initialMeta, normalizeMeta, masteryBonus, equipStats, TOURNAMENT_DIAMONDS, type MetaState } from "./meta";
 import { ROBOT_MAP, ROBOTS } from "./robots";
 import { isPantheonRobot } from "./pantheon-roster";
+import { isGachaRobot } from "./gacha-robots";
 import { TRIAL_STAGES, canSummon, initialPantheon, normalizePantheon, trialOf, type PantheonState } from "./pantheon";
 import {
   applyMatch,
@@ -373,6 +374,8 @@ export function addPlayerXP(amount: number) {
 export function unlockRobot(id: string): boolean {
   // chassis do Panteão só são recrutados lá (summonPantheon) — nunca por loja/contrato/cápsula.
   if (isPantheonRobot(id)) return false;
+  // chassis NEXUS só saem do portal de invocação (grantGachaRobot).
+  if (isGachaRobot(id)) return false;
   if (!ROBOT_MAP[id] || state.robots.some((r) => r.id === id)) return false;
   const avgLevel = Math.max(
     1,
@@ -418,7 +421,21 @@ export function summonPantheon(id: string): boolean {
 
 export function lockedRobotIds(): string[] {
   const owned = new Set(state.robots.map((r) => r.id));
-  return ROBOTS.filter((r) => !owned.has(r.id) && !isCustom(r.id) && !isPantheonRobot(r.id)).map((r) => r.id);
+  return ROBOTS.filter((r) => !owned.has(r.id) && !isCustom(r.id) && !isPantheonRobot(r.id) && !isGachaRobot(r.id)).map((r) => r.id);
+}
+
+/** Entrega um chassi NEXUS tirado no portal. false = já possuído (vira duplicata). */
+export function grantGachaRobot(id: string): boolean {
+  if (!isGachaRobot(id) || !ROBOT_MAP[id] || state.robots.some((r) => r.id === id)) return false;
+  const avgLevel = Math.max(
+    1,
+    state.robots.length ? Math.round(state.robots.reduce((a, r) => a + r.level, 0) / state.robots.length) : 1,
+  );
+  setState((s) => ({
+    ...s,
+    robots: [...s.robots, { id, level: avgLevel, xp: 0, trained: { str: 0, def: 0, agl: 0 } }],
+  }));
+  return true;
 }
 
 export function addItem(id: string, qty: number) {

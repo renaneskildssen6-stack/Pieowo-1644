@@ -1,3 +1,4 @@
+import { trackBattle } from "@/game/pass";
 import "./battle-cine.css";
 import "./battle-portrait.css";
 import { BattleCommands, preloadCommandArt } from "@/components/battle-commands";
@@ -5,6 +6,7 @@ import { UltimateArenaEffect, preloadUltimateArt, type ArenaUltimate } from "@/c
 import { Ground, Plinth, preloadFloorArt } from "@/components/arena-floor";
 import { BattleWorld, type BattleShot } from "@/components/battle-world";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import {
   ArenaBackdrop,
   Icon,
@@ -45,6 +47,7 @@ import { RESOURCES, type ResourceDef } from "@/game/kits/types";
 import { arenaName, arenaZones, type WeatherDef, type Zone } from "@/game/terrain";
 import { portraitUrl } from "@/game/robots";
 import { Atmosphere } from "@/components/atmosphere";
+import { BattleFx } from "@/components/battle-fx";
 import { VsScreen } from "@/components/vs-screen";
 import { VictoryScreen, preloadVictoryArt } from "@/components/victory-screen";
 import { recordBattle } from "@/game/meta-actions";
@@ -52,6 +55,8 @@ import { skinOfRobot } from "@/game/meta";
 import { useGame } from "@/game/save";
 import { combatView, type Combat } from "@/game/combat";
 import type { OnlineEvent } from "../../api/online/events";
+import { BATTLE_PACE, paced } from "@/game/battle-pace";
+import { YourTurnPulse } from "../components/battle-speed";
 
 /** Batalha online: o servidor é a fonte da verdade; esta tela apenas reproduz e envia comandos. */
 export interface RemoteBattle {
@@ -212,13 +217,32 @@ export function BattleScreen({
   // Passe cinematográfico: hitstop no impacto e câmera lenta + K.O. no golpe final
   const [hitstop, setHitstop] = useState<{ key: number; side: Side; heavy: boolean } | null>(null);
   const [ko, setKo] = useState<{ key: number; side: Side; name: string } | null>(null);
+  // Reação a dano (flash + recuo) e sequência de morte (dano → explosão → preto 1 s → fade)
+  const [hurt, setHurt] = useState<{ key: number; side: Side; heavy: boolean } | null>(null);
+  const [dying, setDying] = useState<{ key: number; side: Side; uid: string; robotId: string } | null>(null);
+  const [flash, setFlash] = useState<{ key: number; tone: "crit" | "hit" | "ko" } | null>(null);
 
   const busy = queue.length > 0;
+  const pace = BATTLE_PACE;
+  const paceRef = useRef(pace);
+  paceRef.current = pace;
+  const [turnPulse, setTurnPulse] = useState(0);
+  const wasBusy = useRef(false);
+  useEffect(() => {
+    if (busy) { wasBusy.current = true; return; }
+    if (wasBusy.current && battle.phase === "menu" && !battle.result) setTurnPulse((n) => n + 1);
+    wasBusy.current = false;
+  }, [busy, battle.phase, battle.result]);
+  useEffect(() => {
+    if (!turnPulse) return;
+    const id = window.setTimeout(() => setTurnPulse(0), 900);
+    return () => window.clearTimeout(id);
+  }, [turnPulse]);
   const combat = battle.combat;
   const pActive = useMemo(() => activeOf(battle, "player"), [battle.player.active, battle.player.fighters]);
   const eActive = useMemo(() => activeOf(battle, "enemy"), [battle.enemy.active, battle.enemy.fighters]);
-  const pStage = useMemo(() => battle.player.fighters.find((f) => f.uid === stageActors.player) ?? pActive, [battle.player.fighters, stageActors.player, pActive]);
-  const eStage = useMemo(() => battle.enemy.fighters.find((f) => f.uid === stageActors.enemy) ?? eActive, [battle.enemy.fighters, stageActors.enemy, eActive]);
+  const pStage = useMemo(() => battle.player.fighters.find((f) => f.uid === (dying?.side === "player" ? dying.uid : stageActors.player)) ?? pActive, [battle.player.fighters, stageActors.player, pActive, dying]);
+  const eStage = useMemo(() => battle.enemy.fighters.find((f) => f.uid === (dying?.side === "enemy" ? dying.uid : stageActors.enemy)) ?? eActive, [battle.enemy.fighters, stageActors.enemy, eActive, dying]);
   const pPartner = combat.doubles ? fieldPair(battle.player.fighters).find((f) => f.uid !== pStage.uid) ?? null : null;
   const ePartner = combat.doubles ? fieldPair(battle.enemy.fighters).find((f) => f.uid !== eStage.uid) ?? null : null;
   useEffect(() => {
@@ -267,7 +291,7 @@ export function BattleScreen({
   useEffect(() => {
     if (vs) return;
     setStartCard(true);
-    const card = window.setTimeout(() => setStartCard(false), 1500);
+    const card = window.setTimeout(() => setStartCard(false), 1100);
     return () => window.clearTimeout(card);
   }, [vs]);
   useEffect(() => {
@@ -275,7 +299,7 @@ export function BattleScreen({
     const id = window.setTimeout(() => {
       setClips({ player: "idle", enemy: "idle" });
       setBattle((b) => ({ ...b, phase: b.phase === "intro" ? "menu" : b.phase }));
-    }, 1100);
+    }, 700);
     return () => window.clearTimeout(id);
   }, [vs]);
 
@@ -291,7 +315,7 @@ export function BattleScreen({
       keyRef.current += 1;
       const key = keyRef.current;
       setBanners((b) => [...b.slice(-2), { key, text, sub, color, big }]);
-      window.setTimeout(() => setBanners((b) => b.filter((x) => x.key !== key)), hold);
+      window.setTimeout(() => setBanners((b) => b.filter((x) => x.key !== key)), Math.max(650, Math.round(hold * Math.max(0.5, paceRef.current))));
     },
     [],
   );
@@ -318,6 +342,8 @@ export function BattleScreen({
   useEffect(() => {
     if (queue.length === 0) return;
     const ev = queue[0];
+    const k = paceRef.current;
+    const T = (ms: number) => paced(ms, k);
     let delay = 260;
     if (ev.t === "msg") {
       setMessage(ev.text);
@@ -330,13 +356,15 @@ export function BattleScreen({
           break;
         }
       }
-      delay = 520;
+      // anúncio curto: a ação seguinte já foi antecipada pela câmera
+      delay = T(340);
     } else if (ev.t === "clip") {
       setClips((c) => ({ ...c, [ev.side]: ev.clip as Clip }));
       if (ev.uid) setStageActors((a) => ({ ...a, [ev.side]: ev.uid }));
       if (ev.clip !== "idle") setShot({ side: ev.side, kind: ev.clip === "damage" ? "impact" : ev.clip === "enter" ? "entry" : "action" });
-      delay = ev.clip === "enter" ? 700 : 480;
-      window.setTimeout(() => setClips((c) => ({ ...c, [ev.side]: "idle" })), delay - 60);
+      delay = T(ev.clip === "enter" ? 700 : 480);
+      const clipNow = ev.clip as Clip;
+      window.setTimeout(() => setClips((c) => (c[ev.side] === clipNow ? { ...c, [ev.side]: "idle" } : c)), Math.max(380, delay - 60));
     } else if (ev.t === "vfx") {
       keyRef.current += 1;
       const key = keyRef.current;
@@ -346,10 +374,10 @@ export function BattleScreen({
       setShake({ side: ev.side, level: 1, key });
       window.setTimeout(() => setShake((current) => current?.key === key ? null : current), 260);
       window.setTimeout(() => setVfx((current) => current?.key === key ? null : current), 600);
-      delay = 360;
+      delay = T(360);
     } else if (ev.t === "float") {
       nextFloat(ev.side, ev.text, ev.tone);
-      delay = 380;
+      delay = T(90);
     } else if (ev.t === "sync") {
       setBattle(ev.battle);
       delay = 60;
@@ -357,31 +385,42 @@ export function BattleScreen({
       fire(ev.side, ev.id);
       if (ev.uid) setStageActors((a) => ({ ...a, [ev.side]: ev.uid }));
       if (animSpec(ev.id)?.keyframe === "cinematic") setShot({ side: ev.side, kind: "power" });
-      delay = ev.hold ?? 0;
+      delay = T(ev.hold ?? 0);
     } else if (ev.t === "faint") {
       const rest = queue.slice(1);
       const finalBlow = rest.find((n) => n.t === "end" || n.t === "order")?.t === "end";
       const key = ++keyRef.current;
-      const fallen = battle[ev.side].fighters.find((f) => f.uid === ev.uid)?.name ?? "";
+      const body = battle[ev.side].fighters.find((f) => f.uid === ev.uid);
+      const fallen = body?.name ?? "";
+      if (body) {
+        setDying({ key, side: ev.side, uid: body.uid, robotId: body.robotId });
+        setStageActors((a) => ({ ...a, [ev.side]: body.uid }));
+        setClips((c) => ({ ...c, [ev.side]: "damage" }));
+        window.setTimeout(() => { setDying((d) => d?.key === key ? null : d); setClips((c) => c[ev.side] === "damage" ? { ...c, [ev.side]: "idle" } : c); }, T(2250));
+        window.setTimeout(() => setFlash({ key, tone: "ko" }), T(380));
+        window.setTimeout(() => setFlash((f) => f?.key === key ? null : f), T(760));
+        window.setTimeout(() => setShake({ side: ev.side, level: 3, key }), T(380));
+        window.setTimeout(() => setShake((s) => s?.key === key ? null : s), T(900));
+      }
+      setShot({ side: ev.side, kind: "impact" });
       if (finalBlow) {
-        setShot({ side: ev.side, kind: "impact" });
-        setKo({ key, side: ev.side, name: fallen });
-        window.setTimeout(() => setKo((k) => k?.key === key ? null : k), 1900);
-        delay = 1650;
+        window.setTimeout(() => setKo({ key, side: ev.side, name: fallen }), T(600));
+        window.setTimeout(() => setKo((k) => k?.key === key ? null : k), T(2500));
+        delay = T(2300);
       } else {
-        nextBanner("ABATIDO", fallen ? `${fallen} FORA DE COMBATE` : "FORA DE COMBATE", "#ff5a5a", false, 1000);
-        delay = 720;
+        window.setTimeout(() => nextBanner("ABATIDO", fallen ? `${fallen} FORA DE COMBATE` : "FORA DE COMBATE", "#ff5a5a", false, Math.max(700, T(1300))), T(500));
+        delay = T(2300);
       }
     } else if (ev.t === "end") {
       setShot(null);
-      delay = 500;
+      delay = T(500);
     } else if (ev.t === "order") {
       setShot(null);
       setStageActors({});
       delay = 30;
     } else if (ev.t === "field") {
       nextBanner(ev.label, ev.desc, ev.color, false, 1500);
-      delay = 520;
+      delay = T(320);
     } else if (ev.t === "charge") {
       setBattle(b => {
         const team = b[ev.side];
@@ -396,11 +435,11 @@ export function BattleScreen({
       setStageActors(a => ({...a,[ev.side]:ev.uid,[targetSide]:ev.targetUid}));
       setShot(null);
       setCinematic({...ev,key,startedAt:performance.now()});
-      window.setTimeout(() => setCinematic(c => c?.key === key ? null : c), 1450);
-      delay = 1490;
+      window.setTimeout(() => setCinematic(c => c?.key === key ? null : c), Math.round(1450 * Math.max(k, 0.9)));
+      delay = Math.round(1490 * Math.max(k, 0.9));
     } else if (ev.t === "passive") {
       nextBanner(ev.label, ev.text, "#c8a2ff", false, 1200);
-      delay = 420;
+      delay = T(120);
     } else if (ev.t === "status") {
       nextBanner(
         ev.label,
@@ -409,11 +448,11 @@ export function BattleScreen({
         false,
         1000,
       );
-      delay = 300;
+      delay = T(80);
     } else if (ev.t === "phase") {
       setShot({ side: ev.side, kind: "power" });
       nextBanner(ev.name, ev.form, ev.color, true, 1600);
-      delay = 700;
+      delay = T(560);
     } else if (ev.t === "dmg") {
       keyRef.current += 1;
       const key = keyRef.current;
@@ -427,10 +466,18 @@ export function BattleScreen({
       });
       window.setTimeout(() => setHitSeal((current) => current?.key === key ? null : current), 720);
       const heavy = ev.tier === "fraco" || ev.value >= 60;
+      setClips((c) => ({ ...c, [ev.side]: "damage" }));
+      window.setTimeout(() => setClips((c) => c[ev.side] === "damage" ? { ...c, [ev.side]: "idle" } : c), 460);
+      setHurt({ key, side: ev.side, heavy });
+      window.setTimeout(() => setHurt((h) => h?.key === key ? null : h), 520);
+      setShake({ side: ev.side, level: heavy ? 2 : 1, key });
+      window.setTimeout(() => setShake((s) => s?.key === key ? null : s), heavy ? 420 : 280);
+      if (heavy) { setFlash({ key, tone: ev.tier === "fraco" ? "crit" : "hit" }); window.setTimeout(() => setFlash((f) => f?.key === key ? null : f), 260); }
       setHitstop({ key, side: ev.side, heavy });
       window.setTimeout(() => setHitstop((h) => h?.key === key ? null : h), heavy ? 150 : 90);
-      delay = heavy ? 260 : 180;
+      delay = T(heavy ? 260 : 180);
     }
+    if (import.meta.env.DEV) ((window as unknown as { __ev?: unknown[] }).__ev ??= []).push([ev.t, (ev as { clip?: string; id?: string }).clip ?? (ev as { id?: string }).id ?? "", delay, Math.round(performance.now())]);
     const id = window.setTimeout(() => setQueue((q) => q.slice(1)), delay);
     return () => window.clearTimeout(id);
   }, [queue, nextFloat, nextBanner, fire]);
@@ -509,6 +556,15 @@ export function BattleScreen({
   const continueBattle = () => {
     if (finishedRef.current) return;
     finishedRef.current = true;
+    try {
+      const rep = report ?? battleReport(combat);
+      const sum = (k: "kills" | "crits" | "hits") => rep.player.reduce((a, x) => a + x[k], 0);
+      trackBattle({
+        win: battle.result === "win", online: !!remote, doubles: !!doubles || !!combat.doubles,
+        kills: sum("kills"), crits: sum("crits"), hits: sum("hits"), damage: rep.totals.player,
+        flawless: rep.player.every((x) => x.alive),
+      });
+    } catch { /* passe é opcional */ }
     if (recordProgress) recordBattle(
       battle.result ?? "lose",
       combat.rules.borrowed ? [] : battle.player.fighters.map((f) => f.robotId),
@@ -521,13 +577,15 @@ export function BattleScreen({
   };
 
   return (
-    <div className="mk-battle" data-camera-fixed={!cameraEnabled} data-cine={!vs && busy && cameraEnabled ? "on" : undefined}
+    <div className="mk-battle" style={{ ["--pace" as string]: pace } as CSSProperties}
+      data-camera-fixed={!cameraEnabled} data-cine={!vs && busy && cameraEnabled ? "on" : undefined}
       data-hitstop={hitstop ? (hitstop.heavy ? "heavy" : "light") : undefined} data-ko={ko ? ko.side : undefined}
       data-start={startCard ? "on" : undefined} data-danger={!vs && pActive.hp > 0 && pActive.hp / Math.max(1, pActive.maxHp) < 0.25 ? "on" : undefined}>
       {startCard && <div className="mk-cine-start" aria-hidden><small>{label}</small><b>ROUND {round ?? battle.turn}</b><em>LUTE!</em></div>}
       <i className="mk-cine-danger" aria-hidden />
       <i className="mk-cine-grade" aria-hidden />
       <i className="mk-cine-bar is-top" aria-hidden /><i className="mk-cine-bar is-bottom" aria-hidden />
+      {flash && <i className={`mk-hit-flash is-${flash.tone}`} key={`fl${flash.key}`} aria-hidden />}
       {ko && <div className="mk-cine-ko" key={ko.key} role="status"><b>K.O.</b><small>{ko.side === "enemy" ? "VITÓRIA À VISTA" : "SISTEMAS EM COLAPSO"}{ko.name ? ` · ${ko.name}` : ""}</small></div>}
 
       {/* Fase G3: camada de tela cheia (flashes, vinheta, barras, faixas) */}
@@ -619,7 +677,9 @@ export function BattleScreen({
           reduced={reduced}
           clip={clips.player}
           flip={false}
-          dim={pStage.hp <= 0}
+          dim={pStage.hp <= 0 && dying?.side !== "player"}
+          hurt={hurt?.side === "player" ? hurt : null}
+          dying={dying?.side === "player" ? dying.key : null}
           shake={!reduced && shake?.side === "player" ? shake.level : 0}
           vfx={vfx?.side === "player" ? vfx : null}
           floats={floats.filter((f) => f.side === "player")}
@@ -641,7 +701,9 @@ export function BattleScreen({
           reduced={reduced}
           clip={clips.enemy}
           flip
-          dim={eStage.hp <= 0}
+          dim={eStage.hp <= 0 && dying?.side !== "enemy"}
+          hurt={hurt?.side === "enemy" ? hurt : null}
+          dying={dying?.side === "enemy" ? dying.key : null}
           shake={!reduced && shake?.side === "enemy" ? shake.level : 0}
           vfx={vfx?.side === "enemy" ? vfx : null}
           floats={floats.filter((f) => f.side === "enemy")}
@@ -651,6 +713,9 @@ export function BattleScreen({
         </div>
         {cinematic&&<UltimateArenaEffect key={cinematic.key} event={cinematic} size={size} reduced={reduced}/>}
         </div>
+        {!vs && <BattleFx arena={arena} weather={weather.id} reduced={reduced}
+          colors={{ player: ELEMENT_MAP[pActive.element]?.color ?? "#89f5ff", enemy: ELEMENT_MAP[eActive.element]?.color ?? "#ff8a5a" }}
+          hurt={hurt} dying={dying} shot={busy ? shot : null} power={cinematic ? { key: cinematic.key, side: cinematic.side } : null} vfxKey={vfx} />}
         </>}
       </BattleWorld>
       {!vs && busy && shot && <div className="mk-title mk-battle-action">
@@ -660,6 +725,7 @@ export function BattleScreen({
       {/* Faixas de evento (campo, carga, passiva, status, fase) */}
       <BannerLayer banners={banners} />
 
+      <YourTurnPulse show={!!turnPulse && !vs && !busy} k={turnPulse} />
       {/* Registro de combate */}
       <button type="button" className="mk-btn mk-title mk-battle-camera" aria-pressed={cameraEnabled}
         title="Alternar aproximação de ações e tremores. Movimento reduzido mantém o plano fixo."
@@ -1221,6 +1287,8 @@ function Stage({
   anims,
   seal,
   hideActor=false,
+  hurt=null,
+  dying=null,
 }: {
   arena: string;
   side: Side;
@@ -1236,6 +1304,8 @@ function Stage({
   anims: AnimInst[];
   seal: Seal | null;
   hideActor?: boolean;
+  hurt?: { key: number; heavy: boolean } | null;
+  dying?: number | null;
 }) {
   const game = useGame();
   const skin = side === "player" ? skinOfRobot(game, robotId) : null;
@@ -1253,6 +1323,13 @@ function Stage({
 
   return (
     <div style={{ position: "relative", ["--mk-dir" as string]: String(dir) }} className={shakeCls}>
+      {hurt && !reduced && dying == null && <div key={`sp${hurt.key}`} className={`mk-hit-sparks${hurt.heavy ? " is-heavy" : ""}`} aria-hidden>
+        {Array.from({ length: hurt.heavy ? 9 : 6 }, (_, i) => <s key={i} style={{ ["--a" as string]: `${i * (hurt.heavy ? 40 : 60) + 15}deg`, ["--r" as string]: `${(hurt.heavy ? 46 : 30) + (i % 3) * 10}px` } as CSSProperties} />)}
+      </div>}
+      {dying != null && !reduced && <div key={`boom${dying}`} className="mk-death-boom" aria-hidden>
+        <i className="b1" /><i className="b2" /><i className="b3" />
+        {Array.from({ length: 10 }, (_, i) => <s key={i} style={{ ["--a" as string]: `${i * 36 + (i % 3) * 9}deg`, ["--r" as string]: `${54 + (i % 4) * 16}px` } as CSSProperties} />)}
+      </div>}
       <Plinth arena={arena} side={side} size={size} />
       {/* decalques de chao: marcas deixadas no piso, sob o robo */}
       {decals.map((a) => (
@@ -1263,6 +1340,7 @@ function Stage({
         <AnimVfx key={a.key} inst={a} size={188} offset={(size - 188) / 2} />
       ))}
 
+      <div key={dying != null ? `dy${dying}` : hurt ? `h${hurt.key}` : "calm"} className={dying != null ? "mk-dying" : hurt && !reduced ? (hurt.heavy ? "mk-hurt is-heavy" : "mk-hurt") : dim ? "mk-gone" : undefined}>
       <div
         key={sprite?.key ?? "still"}
         className={sprite && !reduced ? `mk-a mk-a-${sprite.spec.keyframe}` : undefined}
@@ -1282,6 +1360,7 @@ function Stage({
           loop={clip === "idle"}
           dim={dim}
         />
+      </div>
       </div>
 
       {/* projeteis e rastros viajam na direcao do alvo */}

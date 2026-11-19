@@ -24,6 +24,7 @@ import {
   equipUpgradeCost,
   rankIndexOf,
   skinOfRobot,
+  SKIN_MAP,
   statOf,
   type EquipItem,
 } from "@/game/meta";
@@ -353,7 +354,9 @@ export function SkinsScreen({ onBack }: { onBack: () => void }) {
   const g = useGame();
   const [sel, setSel] = useState(g.team[0] ?? g.robots[0]?.id ?? "");
   const cur = g.skinOf[sel];
-  const previewSkin = (id: string | null) => (id ? SKINS.find((s) => s.id === id) ?? null : null);
+  const previewSkin = (id: string | null) => (id ? SKIN_MAP[id] ?? null : null);
+  const ai = SKIN_MAP[`ai_${sel}`];
+  const aiOwned = !!ai && g.skinsOwned.includes(ai.id);
   const [hover, setHover] = useState<string | null>(null);
   const shown = previewSkin(hover ?? cur ?? null);
 
@@ -378,10 +381,31 @@ export function SkinsScreen({ onBack }: { onBack: () => void }) {
             <RobotSprite robotId={sel} size={150} skin={shown} fps={4} />
           </div>
           <div className="mk-title" style={{ position: "absolute", left: 6, bottom: 4, fontSize: 8, color: "#fff", textShadow: "0 2px 0 #000" }}>
-            {ROBOT_MAP[sel]?.name} · {shown ? shown.name : "ORIGINAL"}
+            {ROBOT_MAP[sel]?.name} · {shown ? (shown.robot ? `SKIN IA ${shown.name.split(" · ")[0]}` : shown.name) : "ORIGINAL"}
           </div>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+          {ai && (
+            <button
+              type="button"
+              className="mk-ai-skin"
+              onClick={() => (aiOwned ? applySkin(sel, ai.id) : buySkin(ai.id))}
+              onPointerEnter={() => setHover(ai.id)}
+              onFocus={() => setHover(ai.id)}
+              style={{ gridColumn: "1 / -1", display: "flex", gap: 8, alignItems: "center", padding: 6, cursor: "pointer", textAlign: "left", background: "linear-gradient(90deg,rgba(60,20,90,0.95),rgba(8,18,32,0.95))", border: `2px solid ${cur === ai.id ? "#ffe36a" : "#b36bff"}`, boxShadow: "0 0 10px rgba(179,107,255,0.45)" }}
+            >
+              <div style={{ background: "rgba(0,0,0,0.35)", flexShrink: 0 }}>
+                <RobotSprite robotId={sel} size={48} skin={ai} fps={3} />
+              </div>
+              <div>
+                <div className="mk-title" style={{ fontSize: 5, color: "#e0b8ff" }}>SKIN IA EXCLUSIVA · SÓ PARA ESTE ROBÔ</div>
+                <div className="mk-title" style={{ fontSize: 7, color: "#fff", marginTop: 3 }}>{ai.name}</div>
+                <div className="mk-title" style={{ fontSize: 6, marginTop: 3, color: aiOwned ? "#5fe08a" : g.diamonds >= ai.cost ? "#7fe4ff" : "#ff6a6a" }}>
+                  {aiOwned ? (cur === ai.id ? "EM USO" : "APLICAR") : `${ai.cost} DIAMANTES`}
+                </div>
+              </div>
+            </button>
+          )}
           <SkinTile name="ORIGINAL" sub={!cur ? "EM USO" : "APLICAR"} active={!cur} onClick={() => applySkin(sel, null)} onHover={() => setHover(null)} />
           {SKINS.map((s) => {
             const owned = g.skinsOwned.includes(s.id);

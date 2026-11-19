@@ -2,6 +2,7 @@
 // Módulo puro (sem importar o save em runtime) para evitar ciclos.
 import type { GameState } from "./save";
 import type { FullStats } from "./engine";
+import { AI_SKINS } from "./ai-skins";
 
 // ----------------------------------------------------------------- estado
 export interface EquipItem {
@@ -386,6 +387,10 @@ export interface Skin {
   aura?: string;
   /** indice do desenho de previa em misc.png */
   preview?: number;
+  /** skin exclusiva de um robô (pintada por IA) */
+  robot?: string;
+  /** spritesheet própria que substitui a original */
+  sprite?: string;
 }
 export const SKINS: Skin[] = [
   { id: "bronze", name: "BRONZE ANTIGO", cost: 40, filter: "sepia(0.9) saturate(1.6) brightness(0.85)" },
@@ -406,10 +411,11 @@ export const SKINS: Skin[] = [
   { id: "cosmico", name: "MANTO COSMICO", cost: 700, filter: "hue-rotate(250deg) saturate(1.5) brightness(0.9)", aura: "#b36bff", preview: 10 },
   { id: "dourado", name: "VISOR DOURADO", cost: 900, filter: "sepia(1) saturate(3) brightness(1.15)", aura: "#ffc43a", preview: 11 },
 ];
-export const SKIN_MAP: Record<string, Skin> = Object.fromEntries(SKINS.map((s) => [s.id, s]));
+export const SKIN_MAP: Record<string, Skin> = Object.fromEntries([...SKINS, ...AI_SKINS].map((s) => [s.id, s]));
 export function skinOfRobot(g: Pick<GameState, "skinOf" | "skinsOwned">, robotId: string): Skin | null {
   const id = g.skinOf[robotId];
-  return id && g.skinsOwned.includes(id) ? (SKIN_MAP[id] ?? null) : null;
+  const sk = id && g.skinsOwned.includes(id) ? (SKIN_MAP[id] ?? null) : null;
+  return sk && sk.robot && sk.robot !== robotId ? null : sk;
 }
 
 // diamantes: fontes deliberadamente raras

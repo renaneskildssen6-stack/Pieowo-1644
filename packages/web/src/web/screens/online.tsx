@@ -1,27 +1,50 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { ORPCError } from "@orpc/client";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { authClient, captureBearer, completeManagedRedirect, refreshSession } from "@/lib/auth";
 import { CATALOG_IDS, ROBOT_MAP, faceUrl } from "@/game/robots";
 import { ELEMENTS, elementDef } from "@/game/elements";
-import { combatView, type CombatAction } from "@/game/combat";
-import type { RobotSave } from "@/game/engine";
-import { BattleScreen, type RemoteBattle } from "@/screens/battle";
-import { useCancelQueue, useJoinRoom, useOnlineAction, useOnlineLobby, useOnlineMatch, useQueueOnline, useSurrender } from "@/queries/online";
+import { LOCAL_BUILD, apiOrigin, setApiOrigin } from "@/lib/origin";
+import { useCancelQueue, useJoinRoom, useOnlineLobby, useQueueOnline, useVersusBot } from "@/queries/online";
 import { DirectConnect } from "./direct-connect";
+import { OnlineBattle, errText } from "./online-battle";
+import { DuoPanel } from "./online-duo";
+import { RankedCard, RankedLeaders, RankedRules } from "./online-ranked";
 import "./online.css";
 
-const errText = (e: unknown) => (e as { message?: string } | null)?.message ?? "Falha de conexão com o servidor.";
+const GUEST_KEY = "mecha.guest";
+/** Convidado = conta real e descartável no servidor (e-mail local + senha aleatória guardados no aparelho). */
+async function guestLogin(): Promise<string | null> {
+  const opts = { onSuccess: captureBearer };
+  let saved: { email: string; password: string } | null = null;
+  try { saved = JSON.parse(localStorage.getItem(GUEST_KEY) || "null"); } catch { saved = null; }
+  if (saved) {
+    const r = await authClient.signIn.email({ email: saved.email, password: saved.password }, opts);
+    if (!r.error) { refreshSession(); return null; }
+  }
+  const tag = Math.random().toString(36).slice(2, 8).toUpperCase();
+  const fresh = { email: `guest-${tag.toLowerCase()}-${Date.now().toString(36)}@mecha.local`, password: crypto.randomUUID().replace(/-/g, "").slice(0, 20) };
+  const r = await authClient.signUp.email({ name: `PILOTO-${tag}`, email: fresh.email, password: fresh.password }, opts);
+  if (r.error) return r.error.message ?? "Não foi possível criar o convidado.";
+  localStorage.setItem(GUEST_KEY, JSON.stringify(fresh)); refreshSession(); return null;
+}
 
 /** Entrada do modo online: conta → lobby (fila/sala) → batalha autoritativa. */
-export function OnlineScreen({ onBack, backLabel = "CIDADE" }: { onBack: () => void; backLabel?: string }) {
+export type LobbyTab = "public" | "private" | "duo" | "ranked";
+export function OnlineScreen({ onBack, backLabel = "CIDADE", initialTab = "public", rankedOnly = false }: { onBack: () => void; backLabel?: string; initialTab?: LobbyTab; rankedOnly?: boolean }) {
   const [redirected, setRedirected] = useState(false);
+  const [autoGuest, setAutoGuest] = useState(rankedOnly ? "idle" : "done");
   useEffect(() => { void completeManagedRedirect().finally(() => setRedirected(true)); }, []);
   const { data: session, isPending } = authClient.useSession();
-  if (!redirected || isPending) return <div className="mo-screen mo-center"><p className="mo-kicker">CONECTANDO AO SERVIDOR…</p></div>;
+  // Ranqueada: entra direto como convidado (conta descartável salva no aparelho) — sem tela de login no caminho.
+  useEffect(() => {
+    if (!redirected || isPending || session?.user || autoGuest !== "idle") return;
+    setAutoGuest("busy");
+    void guestLogin().catch(() => "x").finally(() => setAutoGuest("done"));
+  }, [redirected, isPending, session?.user, autoGuest]);
+  if (!redirected || isPending || (!session?.user && autoGuest !== "done")) return <div className="mo-screen mo-center"><p className="mo-kicker">CONECTANDO AO SERVIDOR…</p></div>;
   const user = session?.user;
   if (!user) return <AuthPanel onBack={onBack} />;
   const pilotName = user.name?.trim() || user.email?.split("@")[0] || "PILOTO";
-  return <Lobby onBack={onBack} backLabel={backLabel} name={pilotName} />;
+  return <Lobby onBack={onBack} backLabel={backLabel} name={pilotName} initialTab={rankedOnly ? "ranked" : initialTab} rankedOnly={rankedOnly} />;
 }
 
 function AuthPanel({ onBack }: { onBack: () => void }) {
@@ -31,7 +54,13 @@ function AuthPanel({ onBack }: { onBack: () => void }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [guest, setGuest] = useState(false);
+  const [direct, setDirect] = useState(false);
+  const [server, setServer] = useState(() => apiOrigin());
+  const guest = async () => {
+    setError(null); setBusy(true);
+    try { const e = await guestLogin(); if (e) setError(e); } catch (e) { setError(errText(e)); }
+    finally { setBusy(false); }
+  };
   const google = async () => {
     setError(null); setBusy(true);
     try {
@@ -53,14 +82,18 @@ function AuthPanel({ onBack }: { onBack: () => void }) {
     } catch (err) { setError(errText(err)); }
     finally { setBusy(false); }
   };
-  if (guest) return <GuestLobby onBack={() => setGuest(false)} />;
+  if (direct) return <DirectConnect onBack={() => setDirect(false)} />;
   return <div className="mo-screen mo-auth">
     <header className="mo-top"><button className="mo-ghost" onClick={onBack}>‹ VOLTAR</button><span>ARENA ONLINE</span></header>
     <div className="mo-auth-card">
       <p className="mo-kicker">PvP EM TEMPO REAL · SERVIDOR AUTORITATIVO</p>
       <h1>CONECTE SEU PILOTO</h1>
       <p className="mo-lead">Uma conta guarda vitórias, derrotas e a partida em andamento. O progresso offline continua no seu aparelho.</p>
-      <button className="mo-secondary" onClick={() => setGuest(true)}>CONTINUAR SEM CONTA · SALA LOCAL</button>
+      {LOCAL_BUILD && <form className="mo-join" onSubmit={e => { e.preventDefault(); setApiOrigin(server); window.location.reload(); }}>
+        <input value={server} onChange={e => setServer(e.target.value)} placeholder="https://seu-jogo.runable.site" aria-label="Servidor" />
+        <button className="mo-secondary">SERVIDOR</button>
+      </form>}
+      <button className="mo-primary" onClick={() => void guest()} disabled={busy}>{busy ? "CONECTANDO…" : "JOGAR COMO CONVIDADO"}</button>
       <button className="mo-google" onClick={google} disabled={busy}><span>G</span>CONTINUAR COM GOOGLE</button>
       <div className="mo-split"><span>OU E-MAIL</span></div>
       <div className="mo-tabs" role="tablist">
@@ -73,36 +106,16 @@ function AuthPanel({ onBack }: { onBack: () => void }) {
         <label>SENHA<input aria-label="Senha" type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={10} autoComplete={mode === "up" ? "new-password" : "current-password"} /></label>
         {mode === "up" && <small>Mínimo de 10 caracteres.</small>}
         {error && <p className="mo-error" role="alert">{error}</p>}
-        <button className="mo-primary" disabled={busy}>{busy ? "AGUARDE…" : mode === "up" ? "CRIAR E ENTRAR" : "ENTRAR"}</button>
+        <button className="mo-secondary" disabled={busy}>{busy ? "AGUARDE…" : mode === "up" ? "CRIAR E ENTRAR" : "ENTRAR"}</button>
       </form>
+      <button className="mo-ghost" onClick={() => setDirect(true)}>CONEXÃO DIRETA ENTRE APARELHOS (WebRTC)</button>
     </div>
   </div>;
 }
 
-function GuestLobby({ onBack }: { onBack: () => void }) {
-  const [code, setCode] = useState("");
-  const [room, setRoom] = useState<string | null>(() => localStorage.getItem("mecha-local-room"));
-  const [status, setStatus] = useState("Crie uma sala ou entre com um código.");
-  const [direct, setDirect] = useState(false);
-  const channel = useRef<BroadcastChannel | null>(null);
-  useEffect(() => {
-    if (typeof BroadcastChannel === "undefined") return;
-    const c = new BroadcastChannel("mecha-local-arena"); channel.current = c;
-    c.onmessage = (event) => {
-      if (event.data?.type === "join" && event.data.code === room) { setStatus("RIVAL ENCONTRADO · SALA PAREADA"); c.postMessage({ type: "paired", code: room }); }
-      if (event.data?.type === "paired" && event.data.code === room) setStatus("RIVAL ENCONTRADO · SALA PAREADA");
-    };
-    return () => c.close();
-  }, [room]);
-  const create = () => { const next = Math.random().toString(16).slice(2, 12).toUpperCase(); localStorage.setItem("mecha-local-room", next); setRoom(next); setCode(next); setStatus("AGUARDANDO OUTRO PILOTO NESTE DISPOSITIVO"); };
-  const join = () => { const next = code.trim().toUpperCase(); if (next.length !== 10) { setStatus("O código precisa ter 10 caracteres."); return; } setRoom(next); channel.current?.postMessage({ type: "join", code: next }); setStatus("SOLICITANDO PAREAMENTO…"); };
-  if (direct) return <DirectConnect onBack={() => setDirect(false)} />;
-  return <div className="mo-screen mo-auth"><header className="mo-top"><button className="mo-ghost" onClick={onBack}>‹ VOLTAR</button><span>ARENA LOCAL</span></header><div className="mo-auth-card"><p className="mo-kicker">SEM API KEY · ESCOLHA O TRANSPORTE</p><h1>SALA DE CONEXÃO</h1><p className="mo-lead">Na mesma máquina, use o lobby local. Em aparelhos diferentes, use WebRTC direto e troque a oferta e a resposta por copiar/colar.</p><button className="mo-primary" onClick={() => setDirect(true)}>CONECTAR DOIS APARELHOS</button><div className="mo-split"><span>MESMO DISPOSITIVO</span></div>{room ? <><button className="mo-code" onClick={() => void navigator.clipboard?.writeText(room)}>{room}</button><p className="mo-note">{status}</p><button className="mo-secondary" onClick={() => { localStorage.removeItem("mecha-local-room"); setRoom(null); setCode(""); setStatus("Crie uma sala ou entre com um código."); }}>ENCERRAR SALA</button></> : <><button className="mo-secondary" onClick={create}>CRIAR SALA LOCAL</button><form className="mo-join" onSubmit={(e) => { e.preventDefault(); join(); }}><input value={code} onChange={(e) => setCode(e.target.value.replace(/[^0-9a-f]/gi, "").slice(0, 10).toUpperCase())} placeholder="CÓDIGO DA SALA" aria-label="Código da sala local" /><button className="mo-secondary" disabled={code.length !== 10}>ENTRAR</button></form><p className="mo-note">{status}</p></>}</div></div>;
-}
-
-function Lobby({ onBack, backLabel, name }: { onBack: () => void; backLabel: string; name: string }) {
+function Lobby({ onBack, backLabel, name, initialTab, rankedOnly }: { onBack: () => void; backLabel: string; name: string; initialTab: LobbyTab; rankedOnly: boolean }) {
   const [team, setTeam] = useState<string[]>([]);
-  const [tab, setTab] = useState<"public" | "private">("public");
+  const [tab, setTab] = useState<LobbyTab>(initialTab);
   const [code, setCode] = useState("");
   const [query, setQuery] = useState("");
   const [element, setElement] = useState<string>("");
@@ -110,7 +123,7 @@ function Lobby({ onBack, backLabel, name }: { onBack: () => void; backLabel: str
   const [copied, setCopied] = useState(false);
   const [lobbyWaiting, setLobbyWaiting] = useState(false);
   const lobby = useOnlineLobby(true, lobbyWaiting);
-  const queue = useQueueOnline(), join = useJoinRoom(), cancel = useCancelQueue();
+  const queue = useQueueOnline(), join = useJoinRoom(), cancel = useCancelQueue(), vsBot = useVersusBot();
   const ticket = lobby.data?.ticket ?? null;
   const waiting = !!ticket && !ticket.matchId;
   useEffect(() => setLobbyWaiting(waiting), [waiting]);
@@ -124,20 +137,27 @@ function Lobby({ onBack, backLabel, name }: { onBack: () => void; backLabel: str
     const q = query.trim().toLowerCase();
     return CATALOG_IDS.map(id => ROBOT_MAP[id]).filter(r => r && (!element || elementDef(r.element)?.id === element) && (!q || r.name.toLowerCase().includes(q)));
   }, [query, element]);
-  const toggle = (id: string) => setTeam(t => t.includes(id) ? t.filter(x => x !== id) : t.length >= 4 ? t : [...t, id]);
+  const cap = tab === "duo" ? 1 : 4;
+  const toggle = (id: string) => setTeam(t => t.includes(id) ? t.filter(x => x !== id) : cap === 1 ? [id] : t.length >= cap ? t : [...t, id]);
 
-  if (watching) return <OnlineBattle id={watching} onExit={() => { setWatching(null); void lobby.refetch(); }} />;
+  const openMatch = useCallback((id: string) => setWatching(id), []);
+  if (watching) return <OnlineBattle key={watching} id={watching} onNext={openMatch} onExit={() => { setWatching(null); void lobby.refetch(); }} />;
+  const stats = lobby.data?.stats;
+  const waitedS = ticket ? Math.max(0, Math.floor(((lobby.data?.serverNow ?? Date.now()) - ticket.joined) / 1000)) : 0;
 
   return <div className="mo-screen">
     <header className="mo-top">
       <button className="mo-ghost" onClick={onBack}>‹ {backLabel}</button>
-      <span>ARENA ONLINE</span>
+      <span>{tab === "ranked" ? "RANQUEADA ONLINE" : "ARENA ONLINE"}</span>
       <button className="mo-ghost" onClick={() => void authClient.signOut()}>SAIR</button>
     </header>
     <section className="mo-pilot">
       <div><small>PILOTO</small><strong>{name}</strong></div>
       <div className="mo-record"><b>{lobby.data?.record.wins ?? 0}</b><small>V</small><b className="mo-loss">{lobby.data?.record.losses ?? 0}</b><small>D</small></div>
     </section>
+    {stats && <p className="mo-stats"><span><b>{stats.live}</b> batalhas ao vivo</span><span><b>{stats.queued}</b> na fila</span><span><b>{stats.duoRooms}</b> salas 2v2</span></p>}
+    {(tab === "ranked" || ticket?.kind === "ranked") && lobby.data?.ranked && <RankedCard me={lobby.data.ranked.me} />}
+    {tab === "ranked" && <RankedRules />}
     <p className="mo-rules">Nível 10 fixo · sem treino, equipamentos, pets, cards ou itens · turno de 60 s · 3 turnos perdidos = derrota</p>
 
     {ticket?.matchId && ticket.matchFinished && <p className="mo-note">Última partida encerrada. Monte a equipe para jogar de novo.</p>}
@@ -148,25 +168,30 @@ function Lobby({ onBack, backLabel, name }: { onBack: () => void; backLabel: str
         <button className="mo-code" onClick={() => { void navigator.clipboard?.writeText(ticket.code!).then(() => setCopied(true), () => setCopied(false)); }} aria-label={`Código ${ticket.code}, copiar`}>{ticket.code}</button>
         <small>{copied ? "CÓDIGO COPIADO" : "Toque para copiar e envie ao oponente. Mantenha esta tela aberta."}</small>
       </> : <>
-        <p className="mo-kicker">FILA PÚBLICA</p>
+        <p className="mo-kicker">{ticket.kind === "ranked" ? "FILA RANQUEADA · RATING " + (lobby.data?.ranked.me.rating ?? "") : "FILA PÚBLICA"}</p>
         <div className="mo-scan" aria-hidden><i /><i /><i /><i /><i /></div>
         <strong>PROCURANDO OPONENTE · {ticket.team.length}v{ticket.team.length}</strong>
-        <small>{Math.max(0, Math.floor(((lobby.data?.serverNow ?? Date.now()) - ticket.joined) / 1000))} s na fila</small>
+        <small>{waitedS} s na fila · {stats?.queued ?? 0} na fila agora</small>
+        {waitedS >= 10 && ticket.kind !== "ranked" && <button className="mo-primary" disabled={vsBot.isPending} onClick={() => vsBot.mutate({}, { onSuccess: r => setWatching(r.matchId) })}>JOGAR CONTRA IA AGORA</button>}
       </>}
       <div className="mo-wait-team">{ticket.team.map(id => <img key={id} src={faceUrl(id)} alt={ROBOT_MAP[id]?.name ?? id} />)}</div>
       <button className="mo-secondary" disabled={cancel.isPending} onClick={() => { fresh(); cancel.mutate({}); }}>CANCELAR</button>
     </section> : <>
-      <div className="mo-tabs" role="tablist">
+      {!rankedOnly && <div className="mo-tabs mo-tabs4" role="tablist">
+        <button role="tab" aria-selected={tab === "ranked"} onClick={() => setTab("ranked")}>RANQUEADA</button>
         <button role="tab" aria-selected={tab === "public"} onClick={() => setTab("public")}>FILA PÚBLICA</button>
         <button role="tab" aria-selected={tab === "private"} onClick={() => setTab("private")}>SALA PRIVADA</button>
-      </div>
-      <section className="mo-team" aria-label="Equipe online">
+        <button role="tab" aria-selected={tab === "duo"} onClick={() => { setTab("duo"); setTeam(t => t.slice(0, 1)); }}>DUPLAS 2v2</button>
+      </div>}
+      {tab === "duo" ? <DuoPanel robot={team[0] ?? null} onMatch={openMatch} /> : <><section className="mo-team" aria-label="Equipe online">
         {[0, 1, 2, 3].map(i => { const id = team[i]; return <button key={i} className="mo-slot" disabled={!id} onClick={() => id && toggle(id)} aria-label={id ? `Remover ${ROBOT_MAP[id]?.name}` : `Vaga ${i + 1} livre`}>
           {id ? <><img src={faceUrl(id)} alt="" /><span>{ROBOT_MAP[id]?.name}</span></> : <span className="mo-empty">{String(i + 1).padStart(2, "0")}</span>}
         </button>; })}
       </section>
       <div className="mo-actions">
-        {tab === "public"
+        {tab === "ranked"
+          ? <button className="mo-primary" disabled={!team.length || queue.isPending} onClick={() => { fresh(); queue.mutate({ team, privateRoom: false, ranked: true }); }}>BUSCAR RANQUEADA {team.length ? `${team.length}v${team.length}` : ""}</button>
+          : tab === "public"
           ? <button className="mo-primary" disabled={!team.length || queue.isPending} onClick={() => { fresh(); queue.mutate({ team, privateRoom: false }); }}>BUSCAR PARTIDA {team.length ? `${team.length}v${team.length}` : ""}</button>
           : <>
             <button className="mo-primary" disabled={!team.length || queue.isPending} onClick={() => { fresh(); setCopied(false); queue.mutate({ team, privateRoom: true }); }}>CRIAR SALA</button>
@@ -175,7 +200,7 @@ function Lobby({ onBack, backLabel, name }: { onBack: () => void; backLabel: str
               <button className="mo-secondary" disabled={!team.length || code.length !== 10 || join.isPending}>ENTRAR</button>
             </form>
           </>}
-      </div>
+      </div></>}
     </>}
     {error && <p className="mo-error" role="alert">{errText(error)}</p>}
 
@@ -187,78 +212,13 @@ function Lobby({ onBack, backLabel, name }: { onBack: () => void; backLabel: str
           {ELEMENTS.map(e => <option key={e.id} value={e.id}>{e.label}</option>)}
         </select>
       </div>
-      <div className="mo-grid">{list.map(r => { const el = elementDef(r.element); const on = team.includes(r.id); return <button key={r.id} className="mo-pick" aria-pressed={on} disabled={!on && team.length >= 4} onClick={() => toggle(r.id)} style={{ ["--el" as string]: el?.color ?? "#35e2f0" }}>
+      <div className="mo-grid">{list.map(r => { const el = elementDef(r.element); const on = team.includes(r.id); return <button key={r.id} className="mo-pick" aria-pressed={on} disabled={!on && cap > 1 && team.length >= cap} onClick={() => toggle(r.id)} style={{ ["--el" as string]: el?.color ?? "#35e2f0" }}>
         <img src={faceUrl(r.id)} alt="" loading="lazy" /><span>{r.name}</span><small>{el?.abbr ?? r.element}</small>
       </button>; })}</div>
       {!list.length && <p className="mo-note">Nenhum robô encontrado.</p>}
     </section>}
 
-    {!!lobby.data?.leaders.length && <section className="mo-leaders"><h3>TOP PILOTOS</h3><ol>{lobby.data.leaders.map((l, i) => <li key={i}><span>{l.name}</span><b>{l.wins}V</b><small>{l.losses}D</small></li>)}</ol></section>}
-  </div>;
-}
-
-function useClock(deadline: number, serverNow: number) {
-  const offset = useRef(0);
-  useEffect(() => { offset.current = serverNow - Date.now(); }, [serverNow]);
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => { const t = window.setInterval(() => setNow(Date.now()), 250); return () => window.clearInterval(t); }, []);
-  return Math.max(0, Math.ceil((deadline - (now + offset.current)) / 1000));
-}
-
-function OnlineBattle({ id, onExit }: { id: string; onExit: () => void }) {
-  const [mine, setMine] = useState(false);
-  const match = useOnlineMatch(id, mine);
-  const action = useOnlineAction(), surrender = useSurrender();
-  const [confirm, setConfirm] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const view = match.data;
-  useEffect(() => setMine(!!view?.mine), [view?.mine]);
-  const seconds = useClock(view?.deadline ?? 0, view?.serverNow ?? Date.now());
-  const refetch = match.refetch;
-  useEffect(() => { if (view && !view.finished && seconds === 0) { const t = window.setTimeout(() => void refetch(), 900); return () => window.clearTimeout(t); } }, [seconds, view, refetch]);
-
-  const battle = useMemo(() => view ? combatView(view.combat) : null, [view]);
-  const teamsRef = useRef<{ id: string; player: RobotSave[]; enemy: RobotSave[] } | null>(null);
-  if (view && teamsRef.current?.id !== view.id) {
-    const save = (robotId: string): RobotSave => ({ id: robotId, level: 10, xp: 0, trained: { str: 0, def: 0, agl: 0 }, borrowed: true, gadgetLevel: 0 });
-    teamsRef.current = { id: view.id, player: view.combat.player.fighters.map(f => save(f.robotId)), enemy: view.combat.enemy.fighters.map(f => save(f.robotId)) };
-  }
-  const teams = teamsRef.current;
-
-  const send = async (a: CombatAction) => {
-    if (!view || a.kind === "item" || a.kind === "auto") return;
-    const command = a.kind === "cover" ? (a.withUid ? { kind: "cover" as const, withUid: a.withUid } : null) : a;
-    if (!command) return;
-    setError(null);
-    const input = { id, revision: view.revision, requestId: crypto.randomUUID(), action: command };
-    try { await action.mutateAsync(input); }
-    catch (e) {
-      // Só falha de rede repete (mesmo requestId = idempotente); recusa do servidor apenas ressincroniza.
-      if (e instanceof ORPCError) { setError(errText(e)); void refetch(); return; }
-      try { await action.mutateAsync(input); } catch (again) { setError(errText(again)); void refetch(); }
-    }
-  };
-
-  if (match.isError && !view) return <div className="mo-screen mo-center"><p className="mo-error">{errText(match.error)}</p><button className="mo-secondary" onClick={onExit}>VOLTAR AO LOBBY</button></div>;
-  if (!view || !battle || !teams) return <div className="mo-screen mo-center"><p className="mo-kicker">SINCRONIZANDO PARTIDA…</p></div>;
-
-  const header = <div className="mo-turnbar" data-mine={view.mine} data-low={view.mine && seconds <= 15}>
-    <span className="mo-turn">{view.finished ? "PARTIDA ENCERRADA" : view.mine ? "SUA VEZ" : "VEZ DO OPONENTE"}</span>
-    {!view.finished && <b className="mo-clock" aria-label={`${seconds} segundos`}>{String(seconds).padStart(2, "0")}s</b>}
-    <span className="mo-rival">vs {view.opponentName}{view.missed ? ` · perdas ${view.missed}/3` : ""}</span>
-    {!view.finished && (confirm
-      ? <span className="mo-confirm"><button onClick={() => { setConfirm(false); surrender.mutate({ id }); }}>CONFIRMAR</button><button onClick={() => setConfirm(false)}>NÃO</button></span>
-      : <button className="mo-surrender" onClick={() => setConfirm(true)}>DESISTIR</button>)}
-    {(error || surrender.error || match.isError) && <p className="mo-error" role="alert">{error ?? (surrender.error ? errText(surrender.error) : "Conexão instável — tentando de novo…")}</p>}
-  </div>;
-  const remote: RemoteBattle = {
-    battle, revision: view.revision, transitions: view.transitions, mine: view.mine,
-    sending: action.isPending, send: a => void send(a), header,
-    waiting: <div className="mo-waiting"><span className="mo-scan mo-scan-sm" aria-hidden><i /><i /><i /></span>AGUARDANDO {view.opponentName.toUpperCase()}…</div>,
-  };
-  return <div className="mo-battle">
-    <BattleScreen key={id} remote={remote} arena={view.combat.arena} playerTeam={teams.player} enemyTeam={teams.enemy}
-      items={{}} label={`ONLINE · ${view.myName} vs ${view.opponentName}`} recordProgress={false}
-      onUseItem={() => {}} onFinish={onExit} />
+    {tab === "ranked" && lobby.data?.ranked && <RankedLeaders leaders={lobby.data.ranked.leaders} />}
+    {tab !== "ranked" && !!lobby.data?.leaders.length && <section className="mo-leaders"><h3>TOP PILOTOS</h3><ol>{lobby.data.leaders.map((l, i) => <li key={i}><span>{l.name}</span><b>{l.wins}V</b><small>{l.losses}D</small></li>)}</ol></section>}
   </div>;
 }

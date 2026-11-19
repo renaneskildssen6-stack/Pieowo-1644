@@ -90,3 +90,47 @@ button:disabled{opacity:.42;cursor:not-allowed}
 .mo-waiting{display:flex;align-items:center;justify-content:center;gap:12px;min-height:76px;margin-top:4px;border:1px solid #35e2f033;background:#060e17e8;font:7px 'Press Start 2P',monospace;letter-spacing:1px;color:#8bc4d9}
 @media(prefers-reduced-motion:reduce){.mo-scan i,.mo-turnbar[data-low=true] .mo-clock{animation:none}.mo-pick,.mo-primary,.mo-secondary,.mo-google{transition:none}}
 .mo-direct-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}.mo-direct-label{display:block;margin-top:12px;color:#8fb4c2;font:8px monospace;letter-spacing:.08em}.mo-direct-label textarea{display:block;box-sizing:border-box;width:100%;margin-top:6px;padding:10px;border:1px solid #2d5365;background:#061521;color:#dffbff;font:10px/1.4 monospace;resize:vertical}.mo-direct-chat{display:flex;gap:6px;margin-top:12px}.mo-direct-chat input{min-width:0;flex:1;padding:10px;border:1px solid #2d5365;background:#061521;color:#fff}.mo-direct-log{display:grid;gap:4px;max-height:100px;overflow:auto;margin-top:10px;padding:8px;background:#04101a;border:1px solid #193747;color:#96cbd6}.mo-direct-log small{font:9px monospace}@media(max-width:360px){.mo-direct-actions{grid-template-columns:1fr}.mo-auth-card{padding:18px}.mo-direct-label textarea{font-size:9px}}
+/* ── v5: abas 3, stats, emotes, revanche, duplas ── */
+.mo-tabs{grid-template-columns:repeat(auto-fit,minmax(0,1fr))}
+.mo-auth .mo-tabs{grid-template-columns:1fr 1fr}
+.mo-stats{display:flex;gap:6px;margin:0;font-size:9px;color:#8aa3b6}
+.mo-stats span{flex:1;border:1px solid #23404f;background:#08131d;padding:6px 4px;text-align:center}
+.mo-stats b{display:block;font:11px 'Press Start 2P',monospace;color:#35e2f0;margin-bottom:3px}
+.mo-rival em{font-style:normal;color:#8ff0a4}
+.mo-offline{display:inline-block;margin-left:6px;font-style:normal;font:6px 'Press Start 2P',monospace;color:#ffb3a8;background:#3a0f0c;border:1px solid #e2453a88;padding:3px 5px;animation:moBlink 1s steps(2) infinite}
+@keyframes moBlink{50%{opacity:.35}}
+.mo-bubbles{position:absolute;inset:0;pointer-events:none;z-index:40}
+.mo-bubble{position:absolute;top:30%;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 8px 4px;background:#0a1626ee;border:2px solid #35e2f0;box-shadow:0 0 18px #35e2f055;animation:moBubble 3.5s ease-out forwards;image-rendering:pixelated}
+.mo-bubble[data-mine=true]{left:8%}
+.mo-bubble[data-mine=false]{right:8%;border-color:#ff5d73;box-shadow:0 0 18px #ff5d7355}
+.mo-bubble small{font:6px 'Press Start 2P',monospace;color:#cfe6f5;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@keyframes moBubble{0%{transform:scale(.2) translateY(20px);opacity:0}12%{transform:scale(1.15)}20%{transform:scale(1);opacity:1}80%{opacity:1;transform:translateY(-6px)}100%{opacity:0;transform:translateY(-24px)}}
+.mo-emote-img{image-rendering:pixelated;object-fit:contain;display:block}
+.mo-emote-glyph{line-height:1;display:block}
+.mo-emotes{position:absolute;right:10px;top:calc(env(safe-area-inset-top,0px) + 92px);z-index:45;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.mo-emote-toggle{width:46px;height:46px;display:grid;place-items:center;background:#0b1a2a;border:2px solid #35e2f0aa;cursor:pointer;box-shadow:0 0 12px #35e2f033}
+.mo-emote-tray{display:grid;grid-template-columns:repeat(4,58px);gap:4px;padding:6px;background:#060e18f2;border:1px solid #35e2f066;animation:moTray .18s ease-out}
+.mo-emote-tray button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 2px;background:#0c1a28;border:1px solid #23404f;cursor:pointer;color:#cfe6f5}
+.mo-emote-tray button:hover:not(:disabled){border-color:#35e2f0;transform:translateY(-1px)}
+.mo-emote-tray small{font:5px 'Press Start 2P',monospace}
+@keyframes moTray{from{opacity:0;transform:translateY(-6px) scale(.96)}}
+.mo-rematch{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);transform:translateX(-50%);z-index:300;display:flex;gap:8px;width:min(92vw,420px)}
+.mo-rematch .mo-primary{flex:2}.mo-rematch .mo-secondary{flex:1}
+.mo-duo{display:flex;flex-direction:column;gap:10px;border:1px solid #ff7ad955;background:linear-gradient(160deg,#1d0f24,#090d18);padding:14px}
+.mo-duo .mo-kicker{color:#ff7ad9}
+.mo-duo-pick{display:flex;align-items:center;gap:10px;min-height:56px;border:1px dashed #ff7ad977;padding:6px 10px;font-size:10px;color:#e8d4ef}
+.mo-duo-pick img{width:44px;height:44px;image-rendering:pixelated}
+.mo-duo-teams{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center}
+.mo-duo-vs{font:12px 'Press Start 2P',monospace;color:#ffb43a;text-shadow:0 0 10px #ffb43a88}
+.mo-duo-team{display:flex;flex-direction:column;gap:6px}
+.mo-duo-team h4{margin:0;font:6px 'Press Start 2P',monospace;letter-spacing:1px;color:#5fb8ff}
+.mo-duo-team[data-team=b] h4{color:#ff6b7f}
+.mo-seat{display:flex;flex-direction:column;align-items:center;gap:3px;min-height:92px;padding:6px 4px;background:#0a1422;border:1px solid #2b4656;color:#e8f4ff;cursor:pointer}
+.mo-duo-team[data-team=b] .mo-seat{border-color:#5a2a35}
+.mo-seat img{width:46px;height:46px;image-rendering:pixelated}
+.mo-seat b{font:6px 'Press Start 2P',monospace;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mo-seat small{font-size:8px;color:#8aa3b6}
+.mo-seat[data-mine=true]{border-color:#8ff0a4;box-shadow:0 0 12px #8ff0a444}
+.mo-seat[data-empty=true]{border-style:dashed;opacity:.8}
+.mo-seat[data-empty=true] span{font:14px 'Press Start 2P',monospace;color:#5d7486}
+.mo-seat:disabled{opacity:1;cursor:default}

@@ -3,6 +3,7 @@ import Index from "./pages/index";
 import Gallery from "./pages/gallery";
 import AssetLibrary from "./pages/asset-library";
 import BattleTest from "./pages/battle-test";
+import UiTest from "./pages/ui-test";
 import { Provider } from "./components/provider";
 import { AgentFeedback, RunableBadge } from "@runablehq/website-runtime";
 import './gallery.css';
@@ -15,6 +16,7 @@ function App() {
         <Route path="/galeria"><div className="gallery-surface"><Gallery /></div></Route>
         <Route path="/assets" component={AssetLibrary} />
         {import.meta.env.DEV && <Route path="/battle-test" component={BattleTest} />}
+        {import.meta.env.DEV && <Route path="/ui-test" component={UiTest} />}
         <Route path="/" component={Index} />
       </Switch>
       {/* Do not remove — off by default, activated by parent iframe via postMessage */}

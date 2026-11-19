@@ -19,3 +19,23 @@
 .mc-connected-location span{overflow:hidden;max-height:40px;animation:mc-hint-fold 1s ease 9s forwards}
 @keyframes mc-hint-fold{to{max-height:0;opacity:0;margin:0}}
 @media(prefers-reduced-motion:reduce){.mc-connected-location span{animation:mc-hint-fold .01s linear 9s forwards}}
+
+/* HUD reorganizado: local + troca de piloto vivem na linha abaixo da barra rápida. */
+.mc-hud-sub .mc-connected-location{position:relative;top:auto;left:auto;max-width:min(200px,62%);padding:5px 8px;border-left:3px solid #44d6d5;box-shadow:0 0 0 1px #000,0 4px 12px #0005}
+.mc-hud-sub .mc-connected-location strong{font-size:9px;margin:1px 0}
+.mc-hud-sub .mc-connected-location small{font-size:7px}
+.mc-hud-sub .mc-connected-map{width:130px;margin-top:4px}
+.mc-hud-sub .mc-connected-location span{font-size:6px;line-height:1.5}
+.mc-hud-sub .mc-connected-map i{transition:left .3s linear,top .3s;animation:mc-map-ping 1.2s ease-in-out infinite}
+.mc-hud-sub .mc-connected-picker{position:relative;top:auto;right:auto;flex:none;height:32px;box-shadow:0 0 0 1px #000,0 4px 10px #0006;transition:transform .14s cubic-bezier(.3,1.6,.5,1),border-color .12s}
+.mc-hud-sub .mc-connected-picker:hover:not(:disabled){transform:translateY(-2px);border-color:#9ff6ff}
+.mc-hud-sub .mc-connected-picker img{transition:transform .2s}
+.mc-hud-sub .mc-connected-picker:hover:not(:disabled) img{transform:scale(1.15) rotate(6deg)}
+.mc-connected-pilot{display:none}
+.mc-connected-use{animation:mc-use-pop .28s cubic-bezier(.2,1.6,.4,1)}
+.mc-connected-use::after{content:"";position:absolute;inset:-4px;border:2px solid #42d5d2;animation:mc-use-ring 1.4s ease-out infinite;pointer-events:none}
+@keyframes mc-map-ping{50%{box-shadow:0 0 0 3px #ffcd7444,0 0 8px #ffcd74}}
+@keyframes mc-use-pop{from{opacity:0;transform:translateX(-50%) translateY(10px) scale(.85)}}
+@keyframes mc-use-ring{from{opacity:.8}to{opacity:0;inset:-12px}}
+@media(max-height:500px){.mc-hud-sub .mc-connected-location span,.mc-hud-sub .mc-connected-map{display:none}.mc-hud-sub .mc-connected-location{padding:4px 8px}}
+@media(prefers-reduced-motion:reduce){.mc-hud-sub .mc-connected-map i,.mc-connected-use,.mc-connected-use::after{animation:none}}

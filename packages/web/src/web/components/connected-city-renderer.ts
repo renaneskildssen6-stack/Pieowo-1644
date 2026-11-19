@@ -1,5 +1,6 @@
 import { CITY_WIDTH, SUBWAY_LEVEL, CITY_BUILDINGS, CITY_PLACES, STATIONS, CITY_PROPS, SUBWAY_PROPS, PROP_ART, TRAFFIC_LANES, industryBlend, type Point, type CityProp } from '@/game/connected-city';
-import { HERO_FRAME, HERO_CLIPS, clipFrame, heroSheet, type HeroClip } from '@/game/hero';
+import { HERO_CLIPS, clipFrame, heroSheet, heroPose, drawHeroPosed, kickDust, drawDust, type HeroClip } from '@/game/hero';
+const dustClock={t:0};
 import { systemUnlocked, UNLOCK_LEVEL } from '@/game/progression';
 import { droneLevel } from '@/game/drone-system';
 import type { GameState } from '@/game/save';
@@ -220,10 +221,14 @@ export function renderConnectedCity(ctx:CanvasRenderingContext2D,v:CityView,art:
   atlas('train',pt.x,pt.y-6+bob,390,false,1);};
  if(v.trainX===null){for(const s of STATIONS)if(visible(s.trainX,300))actors.push({z:184,draw:()=>drawTrain(s.trainX,false)});}
  const drawPlayer=()=>{
-  const pt=project(p.x,p.z,p.elevation);ctx.globalAlpha=.5;ctx.fillStyle='#020a10';ctx.beginPath();ctx.ellipse(pt.x,pt.y-1,18,5,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
+  const pt=project(p.x,p.z,p.elevation);
+  const pose=still?heroPose('idle',0):heroPose(p.clip,t,p);const dtd=Math.max(0,Math.min(.05,t-dustClock.t));dustClock.t=t;
+  if(pose.footfall&&p.height<=0&&v.mode!=='ride')kickDust(p,pt.x,pt.y,p.face,p.clip==='run');
+  drawDust(ctx,p,dtd);
+  const air=Math.max(0,Math.min(1,p.height/160));ctx.globalAlpha=.5*(1-air*.5);ctx.fillStyle='#020a10';ctx.beginPath();ctx.ellipse(pt.x,pt.y-1,18*pose.shadow*(1-air*.4),5*pose.shadow,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
   if(v.mode==='ride')return;
   const sheet=heroSheet(v.hero),def=HERO_CLIPS[p.clip],size=HERO_SIZE*def.scale;
-  if(art.ready(sheet)){ctx.save();ctx.translate(pt.x,pt.y-p.height);ctx.scale(p.face,1);ctx.drawImage(art.get(sheet),clipFrame(p.clip,p.clipTime)*HERO_FRAME,0,HERO_FRAME,HERO_FRAME,-size/2,-size,size,size);ctx.restore();}
+  if(art.ready(sheet)){ctx.save();ctx.translate(pt.x,pt.y-p.height);ctx.scale(p.face,1);drawHeroPosed(ctx,art.get(sheet),clipFrame(p.clip,p.clipTime),size,pose);ctx.restore();}
   else art.get(sheet);
   ctx.fillStyle='#b1ffff';ctx.fillRect(pt.x-6,pt.y+7,12,2);
   if(droneLevel(v.game,v.hero)>0)sprite(`/drones/${v.hero}_drone.png?v=3`,p.x+40,p.z,40,40,p.elevation-p.height-92+(still?0:Math.sin(t*3)*4));

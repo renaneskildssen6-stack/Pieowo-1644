@@ -3,13 +3,11 @@ import { RPCLink } from "@orpc/client/fetch";
 import { createTanstackQueryUtils } from "@orpc/tanstack-query";
 import type { AppRouterClient } from "../../api";
 import { authClient } from "./auth";
+import { apiOrigin } from "./origin";
 
-const runtimeOrigin = window.location.protocol === "file:" || window.location.origin === "null"
-  ? "http://localhost"
-  : window.location.origin;
 
 const link = new RPCLink({
-  url: `${runtimeOrigin}/api/rpc`,
+  url: () => `${apiOrigin()}/api/rpc`,
   headers: () => {
     const token = authClient.managedAuth.getToken();
     return token ? { Authorization: `Bearer ${token}` } : {};

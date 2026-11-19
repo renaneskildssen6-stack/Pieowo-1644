@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useGate } from "@/components/gate";
-import { HERO_CLIPS, HERO_FRAME, clipFrame, heroSheet, type HeroClip } from "@/game/hero";
+import { HERO_CLIPS, HERO_FRAME, clipFrame, heroSheet, heroPose, kickDust, drawDust, type HeroClip } from "@/game/hero";
 import { explorerId, useGame } from "@/game/save";
 import { ExplorationControls } from "@/components/exploration-controls";
 import { WorldAtlas } from "@/components/world-atlas";
@@ -935,12 +935,18 @@ export function WorldMap({ playerLevel, won, teamEmpty, gold, onBack, onEnter }:
         const sq = 1 + P.squash;
         const dw = (SPR * def.scale) / sq;
         const dh = SPR * def.scale * sq;
-        const bob = def.bob ? Math.sin(t * def.fps * 1.6) * def.bob : 0;
+        const pose = heroPose(P.clip, t, P);
+        if (pose.footfall) kickDust(P, P.x - cx, P.y - cy + 3, P.face, P.clip === "run");
+        drawDust(ctx, P, 1 / 60);
+        ctx.globalAlpha = 0.3 * pose.shadow;
+        ctx.fillStyle = "#000";
+        ctx.beginPath(); ctx.ellipse(Math.round(P.x - cx), Math.round(P.y - cy + 2), 20 * pose.shadow, 5, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 1;
         ctx.save();
-        ctx.translate(Math.round(P.x - cx), Math.round(P.y - cy + bob * 0.5 + 3));
+        ctx.translate(Math.round(P.x - cx), Math.round(P.y - cy + pose.dy + 3));
         ctx.scale(P.face, 1);
-        if (def.tilt) ctx.rotate(def.tilt);
-        ctx.drawImage(sheet, P.frame * HERO_FRAME, 0, HERO_FRAME, HERO_FRAME, -dw / 2, -dh, dw, dh);
+        ctx.rotate(pose.rot);
+        ctx.drawImage(sheet, P.frame * HERO_FRAME, 0, HERO_FRAME, HERO_FRAME, (-dw * pose.sx) / 2, -dh * pose.sy, dw * pose.sx, dh * pose.sy);
         ctx.restore();
       }
       if (P.atk > 0.1) {
