@@ -22,5 +22,6 @@ export type Screen =
   | "museum"
   | "portal"
   | "pantheon"
+  | "nexus"
   | "online"
   | "story";

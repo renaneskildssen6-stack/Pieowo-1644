@@ -120,3 +120,21 @@
 @media(max-width:370px){.mc-dock-tile{height:38px}.mc-dock-tile img,.mc-dock-tile .pt-sheet{width:20px;height:20px}.mc-dock-tile>span:last-child{font-size:5px}.mc-hud-sys-t small,.mc-dock .ps-open-txt small{display:none}.mc-dock-grid{gap:4px}.mc-dock-card small{display:none}}
 @media(max-height:500px){.mc-dock{gap:4px;padding-top:4px}.mc-hud-pilot,.mc-hud-sys,.mc-dock .ps-open{height:30px}.mc-dock-tile{height:34px}.mc-dock-tile img,.mc-dock-tile .pt-sheet{width:18px;height:18px}}
 @media(min-width:560px){.mc-dock-grid{grid-template-columns:repeat(4,1fr)}.mc-dock-panel{width:min(520px,100%)}}
+
+/* ---------- Portal Nexus: orbe prismático único ---------- */
+.mc-dock-nexus{position:relative;flex:0 0 50px;width:50px;height:50px;margin:-4px 0 -4px 2px;padding:0;border:0;background:none;display:grid;place-items:center;color:#fff;cursor:pointer;animation:mc-tile-in .5s cubic-bezier(.2,1.5,.4,1) calc(.16s + var(--i,0) * 55ms) both;transition:transform .15s cubic-bezier(.3,1.6,.5,1)}
+.mc-nx-ring{position:absolute;inset:0;clip-path:polygon(25% 3%,75% 3%,100% 50%,75% 97%,25% 97%,0 50%);background:conic-gradient(from var(--nx-a,0deg),#ff4fd8,#ffd84a,#4affc4,#4ab8ff,#a35cff,#ff4fd8);animation:mc-nx-spin 3s linear infinite;filter:drop-shadow(0 0 6px #b06bff)}
+.mc-nx-core{position:absolute;inset:4px;clip-path:polygon(25% 3%,75% 3%,100% 50%,75% 97%,25% 97%,0 50%);background:#0a0420;overflow:hidden}
+.mc-nx-core img{width:100%;height:100%;object-fit:cover;image-rendering:pixelated;animation:mc-nx-swirl 6s linear infinite;opacity:.9}
+.mc-nx-t{position:absolute;bottom:-1px;left:50%;transform:translateX(-50%);font:6px 'Press Start 2P',monospace;letter-spacing:.06em;padding:2px 3px;background:#12052a;border:1px solid #ffd84a;color:#ffe9a0;text-shadow:1px 1px 0 #000;white-space:nowrap;box-shadow:0 0 0 1px #000}
+.mc-nx-free{position:absolute;top:-3px;right:-6px;font:5px 'Press Start 2P',monospace;font-style:normal;padding:2px 3px;background:#ff3d6e;color:#fff;border:1px solid #000;animation:mc-bob 1s ease-in-out infinite;z-index:1}
+.mc-dock-nexus::after{content:"";position:absolute;inset:-4px;border-radius:50%;background:radial-gradient(circle,#c58bff55,transparent 70%);animation:mc-nx-pulse 1.8s ease-in-out infinite;pointer-events:none;z-index:-1}
+.mc-dock-nexus.has-free::after{background:radial-gradient(circle,#ffd84a77,transparent 70%)}
+.mc-dock-nexus:hover:not(:disabled){transform:translateY(-3px) scale(1.08)}
+.mc-dock-nexus:active:not(:disabled){transform:scale(.94)}
+.mc-dock-nexus:disabled{opacity:.5;filter:grayscale(.8)}
+@property --nx-a{syntax:"<angle>";inherits:false;initial-value:0deg}
+@keyframes mc-nx-spin{to{--nx-a:360deg}}
+@keyframes mc-nx-swirl{to{transform:rotate(360deg) scale(1.25)}}
+@keyframes mc-nx-pulse{50%{transform:scale(1.25);opacity:.4}}
+@media (prefers-reduced-motion:reduce){.mc-nx-ring,.mc-nx-core img,.mc-dock-nexus::after,.mc-nx-free{animation:none}}

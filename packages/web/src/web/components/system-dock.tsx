@@ -6,19 +6,20 @@ import { systemUnlocked, UNLOCK_LEVEL } from "@/game/progression";
 import { SYSTEM_GUIDES } from "@/game/system-guides";
 import "./system-dock.css";
 import { PassHub } from "./pass-hub";
+import { useGacha, freeAvailable } from "@/game/gacha";
 
 type Sys = Exclude<Screen, "menu">;
 type Group = { id: string; label: string; tag: string; tone: string; items: Sys[] };
 
 const GROUPS: Group[] = [
-  { id: "jornada", label: "JORNADA", tag: "HISTÓRIA E COMBATE", tone: "#ffb21a", items: ["story", "modes", "tournaments", "ranked", "online", "pantheon"] },
+  { id: "jornada", label: "JORNADA", tag: "HISTÓRIA E COMBATE", tone: "#ffb21a", items: ["story", "modes", "tournaments", "ranked", "online", "pantheon", "nexus"] },
   { id: "equipe", label: "EQUIPE", tag: "HANGAR E SUPORTE", tone: "#35e2f0", items: ["roster", "engineer", "lab", "drones", "pets", "cards"] },
   { id: "cidade", label: "CIDADE", tag: "DISTRITOS E RECURSOS", tone: "#6dffb0", items: ["shop", "mine", "contracts", "academy", "power", "observatory", "museum", "portal"] },
   { id: "piloto", label: "PILOTO", tag: "REGISTRO E ESTILO", tone: "#ff7ad9", items: ["profile", "mastery", "skins"] },
 ];
 const BUILDING: Partial<Record<Sys, string>> = { roster: "hangar", modes: "arena", tournaments: "tourney", ranked: "ranked", shop: "shop", engineer: "engineer", pets: "pets", cards: "cards", mine: "mine", lab: "lab", observatory: "observatory", academy: "academy", contracts: "contracts", power: "power", museum: "museum", portal: "portal" };
-const OVERHAUL: Partial<Record<Sys, string>> = { story: "story", online: "arena", pantheon: "star", drones: "repair", profile: "pilot", mastery: "ultimate", skins: "hangar" };
-const SHORT: Partial<Record<Sys, string>> = { modes: "Arena", online: "Online PvP", roster: "Hangar", story: "História", drones: "Drones", profile: "Perfil", lab: "Laboratório", pantheon: "Panteão" };
+const OVERHAUL: Partial<Record<Sys, string>> = { story: "story", online: "arena", pantheon: "star", nexus: "ultimate", drones: "repair", profile: "pilot", mastery: "ultimate", skins: "hangar" };
+const SHORT: Partial<Record<Sys, string>> = { modes: "Arena", online: "Online PvP", roster: "Hangar", story: "História", drones: "Drones", profile: "Perfil", lab: "Laboratório", pantheon: "Panteão", nexus: "Portal Nexus" };
 const iconOf = (id: Sys) => BUILDING[id] ? `/city/b_${BUILDING[id]}.png` : `/overhaul/${OVERHAUL[id] || "star"}.webp`;
 const nameOf = (id: Sys) => SHORT[id] || SYSTEM_GUIDES[id]?.name || id;
 const QUICK: [Sys, string, string, string][] = [["story", "story", "HISTÓRIA", "#ffb21a"], ["roster", "hangar", "HANGAR", "#35e2f0"], ["modes", "arena", "ARENA", "#ff6a4a"], ["online", "coliseum", "ONLINE", "#a98bff"]];
@@ -27,6 +28,8 @@ const fmt = (n: number) => n >= 100000 ? `${Math.floor(n / 1000)}K` : n.toLocale
 
 export function SystemDock({ onEnter, disabled, onHome, score, children }: { onEnter: (id: Sys) => void; disabled: boolean; onHome?: () => void; score?: number; children?: ReactNode }) {
   const g = useGame();
+  const gx = useGacha();
+  const free = freeAvailable(gx);
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState("todos");
   const [passOpen, setPassOpen] = useState(false);
@@ -70,6 +73,11 @@ export function SystemDock({ onEnter, disabled, onHome, score, children }: { onE
       <button data-skin="none" data-testid="pantheon-button" style={{ ["--tone" as string]: "#ff5cd6", ["--i" as string]: 5 }} className={`mc-dock-tile is-myth${unlocked("pantheon") ? "" : " is-locked"}`} disabled={disabled || !unlocked("pantheon")} onClick={() => go("pantheon")} aria-label="Abrir Panteão">
         <span className="pt-sheet" style={{ width: 24, height: 24, backgroundImage: "url(/mythic/emblem.webp)" }} />
         <span>{unlocked("pantheon") ? "PANTEÃO" : `NV ${UNLOCK_LEVEL.pantheon}`}</span>
+      </button>
+      <button data-skin="none" data-testid="nexus-button" style={{ ["--i" as string]: 6 }} className={`mc-dock-nexus${free ? " has-free" : ""}`} disabled={disabled || !unlocked("nexus")} onClick={() => go("nexus")} aria-label="Abrir Portal Nexus — invocar robôs">
+        <span className="mc-nx-ring" aria-hidden /><span className="mc-nx-core" aria-hidden><img src="/gacha/portal.jpg" alt="" /></span>
+        <span className="mc-nx-t">NEXUS</span>
+        {free && <i className="mc-nx-free">GRÁTIS</i>}
       </button>
     </div>
     {children && <div className="mc-hud-sub">{children}</div>}

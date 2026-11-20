@@ -16,6 +16,7 @@ import "./cinematic.css";
 // Game systems are split by screen: the title/download path does not pull the
 // battle, roster, city and tournament modules into its first JavaScript chunk.
 const PantheonScreen = lazy(() => import("@/screens/pantheon").then(m => ({ default: m.PantheonScreen })));
+const GachaScreen = lazy(() => import("@/screens/gacha").then(m => ({ default: m.GachaScreen })));
 const StoryScreen = lazy(() => import("@/screens/story").then(m => ({ default: m.StoryScreen })));
 const ObservatoryScreen = lazy(() => import("@/screens/city-observatory").then(m => ({ default: m.ObservatoryScreen })));
 const AcademyScreen = lazy(() => import("@/screens/city-academy").then(m => ({ default: m.AcademyScreen })));
@@ -96,7 +97,7 @@ function GameContent() {
   const { transition } = useGate();
   const close = () => transition(() => setScreen("menu"));
   const enter = (id: Screen) => { if (systemUnlocked(getState(), id)) setScreen(id); };
-  const immersive = ["observatory", "academy", "contracts", "power", "museum", "portal", "modes", "ranked", "tournaments", "online", "pantheon", "story"].includes(screen);
+  const immersive = ["observatory", "academy", "contracts", "power", "museum", "portal", "modes", "ranked", "tournaments", "online", "pantheon", "nexus", "story"].includes(screen);
 
   const beginTutorial = () => {
     const replay = g.tutorial.completed;
@@ -234,6 +235,7 @@ function GameContent() {
                 {screen === "portal" && <PortalScreen onBack={close} />}
                 {screen === "online" && <OnlineScreen backLabel="CIDADE" onBack={close} />}
                 {screen === "pantheon" && <PantheonScreen onBack={close} />}
+                {screen === "nexus" && <GachaScreen onBack={close} />}
                 {screen === "story" && <StoryScreen onBack={close} />}
               </ScreenBoundary>
             </div>
