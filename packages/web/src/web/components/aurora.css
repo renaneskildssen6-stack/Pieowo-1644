@@ -1,0 +1,52 @@
+.mc-aurora{position:absolute;inset:0;z-index:31;display:flex;flex-direction:column;background:#081417;color:#eff8ee;font:13px/1.48 ui-monospace,monospace;--au-green:#b5f0c6;--au-gold:#ffd18e;--au-muted:#a7beb7;--au-line:#345951;isolation:isolate}
+.mc-aurora *{box-sizing:border-box}
+.mc-game-viewport:has(.mc-aurora) .mc-guide-trigger,.mc-game-viewport:has(.mc-aurora) .mc-pantheon-trigger{visibility:hidden;pointer-events:none}
+.mc-aurora > header{display:flex;gap:12px;justify-content:space-between;align-items:center;padding:10px clamp(10px,3vw,24px);border-bottom:1px solid var(--au-line);background:#0b2023}
+.mc-aurora > header strong{font:clamp(8px,2vw,13px)/1.6 'PressStart',monospace;color:var(--au-green);text-align:center}
+.mc-aurora > header span{color:var(--au-gold);font-size:11px;text-align:right}
+.mc-aurora button{font:700 11px/1.4 ui-monospace,monospace;color:var(--au-green);background:#15332f;border:1px solid #52766a;padding:9px 11px;min-height:37px;cursor:pointer}
+.mc-aurora button:focus-visible{outline:2px solid var(--au-gold);outline-offset:2px}
+.mc-aurora button:hover:not(:disabled){border-color:#b5f0c6;background:#254639}
+.mc-aurora button:disabled{opacity:.56;cursor:not-allowed}
+.mc-aurora button.au-primary{background:#b5f0c6;color:#092721;border-color:#b5f0c6}
+.mc-aurora button.au-primary:hover:not(:disabled){background:#e0ffe8}
+.au-scroll{overflow:auto;overscroll-behavior:contain;min-height:0;flex:1;scrollbar-color:#567f70 #0b2023}
+.au-inner{max-width:1000px;margin:0 auto;padding:clamp(11px,2.6vw,26px);display:grid;gap:12px}
+.au-inner h2,.au-inner h3,.au-inner p{margin:0}
+.au-inner h2{font-size:clamp(25px,6vw,66px);letter-spacing:-.07em;line-height:1.03}
+.au-inner h3{font-size:16px;line-height:1.2}
+.au-inner p,.au-muted{color:var(--au-muted)}
+.au-kicker{font-size:10px;letter-spacing:.15em;font-weight:bold;color:var(--au-gold);display:block;margin-bottom:6px}
+.au-hero{position:relative;isolation:isolate;overflow:hidden;min-height:172px;padding:clamp(14px,4vw,34px);display:grid;align-content:center;gap:10px;border:1px solid var(--au-line);background:radial-gradient(ellipse at 78% 90%,#2d5b48,#0b2025 64%,#0b181b 92%)}
+.au-hero p{max-width:46ch;color:#d3e7dd;position:relative}
+.au-hero .au-orbit{position:absolute;inset:0;width:100%;height:100%;z-index:-2}
+.au-orbital::after{content:'';position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,#08191bee 10%,#08191bc9 39%,transparent 81%)}
+.au-home-hero::after{content:'';position:absolute;inset:0;z-index:-1;background:repeating-linear-gradient(120deg,transparent 0 35px,#a7eac312 35px 36px,transparent 36px 42px),linear-gradient(90deg,#0b1d22,transparent 75%)}
+.au-stat{display:flex;gap:8px;flex-wrap:wrap}.au-stat span{padding:5px 9px;border:1px solid var(--au-line);background:#103029;color:var(--au-green);font-size:11px}
+.au-row,.au-detail{padding:12px 14px;border:1px solid var(--au-line);background:#10201f;display:grid;gap:8px}
+.au-row{grid-template-columns:1fr auto;align-items:center}.au-row strong{color:var(--au-green)}.au-row p{margin-top:3px}.au-row small{display:block;color:var(--au-gold);margin-top:5px}
+.au-actions{display:flex;gap:7px;align-items:center;flex-wrap:wrap}.au-actions b{color:var(--au-gold)}
+.au-note{border-left:3px solid var(--au-gold);padding:8px 10px;background:#282820;color:#ffdda0!important}
+.au-map{position:relative;border:1px solid #558778;background:#0c242b;overflow:hidden}
+.au-chart{display:block;width:100%;height:auto}
+.mc-aurora .au-pin{position:absolute;transform:translate(-50%,-50%);width:clamp(25px,5vw,36px);height:clamp(25px,5vw,36px);min-height:0;padding:0;border-radius:50%;background:#132e2e;border:2px solid #bfecd2;color:#effff4;box-shadow:0 0 0 3px #071f2370;font-size:12px;display:grid;place-items:center}
+.mc-aurora .au-pin[data-here=true]{background:#bbf1c1;color:#122623}
+.mc-aurora .au-pin[aria-pressed=true]{outline:2px solid var(--au-gold);outline-offset:3px}
+.mc-aurora .au-pin[data-done=true]:not([data-here=true]){border-color:#87c19a;color:#b2e4c3}
+.au-map-key{margin-top:-5px!important;font-size:11px}
+.au-route-list{display:flex;gap:6px;flex-wrap:wrap}.au-route-list button{min-height:33px;padding:6px 8px}.au-route-list button[aria-pressed=true]{border-color:var(--au-gold);color:var(--au-gold)}
+.au-detail progress{accent-color:#6fdab2;width:100%;height:10px}
+.au-signal{border:1px solid #7d7551;background:#29281b;padding:10px;display:grid;gap:7px}.au-signal h4{margin:0;color:var(--au-gold)}
+.au-flight{padding:5px 9px;margin-right:auto;border-left:2px solid var(--au-gold);color:var(--au-gold)}
+.mc-home-shortcuts{position:absolute;left:10px;right:10px;top:146px;z-index:8;display:flex;gap:6px;flex-wrap:wrap;pointer-events:none}
+.mc-home-shortcuts button{background:#071e2bef;color:#d4fae5;border:1px solid #5a957e;min-height:32px;padding:5px 9px;font:8px/1.5 'Silkscreen',monospace;cursor:pointer;pointer-events:auto}
+.mc-home-shortcuts button:hover,.mc-home-shortcuts button:focus-visible{border-color:#e8eecd;outline:1px solid #e8eecd}.mc-home-shortcuts button[data-planet=true]{border-color:#be9a59;color:#ffe2a7}
+.mc-home.home-tier-2 .mc-home-floor{filter:brightness(1.3)}.mc-home.home-tier-3 .mc-home-floor{filter:brightness(1.45) hue-rotate(45deg)}
+@media(max-width:480px){.au-row{grid-template-columns:1fr}.au-row button{justify-self:start}.au-hero{min-height:147px}.au-inner{gap:10px}.mc-home-shortcuts button{padding-inline:6px}}
+@media(max-height:480px){.mc-home-shortcuts{top:120px}.mc-home-top{height:61px}.mc-home-city-link,.mc-home-picker-trigger{top:68px}.mc-home-footer{bottom:80px}.mc-home-near{bottom:105px}}
+.au-detail progress{appearance:none;border:1px solid #355d50;background:#19302b;color:#7ddeaa;border-radius:0;overflow:hidden}
+.au-detail progress::-webkit-progress-bar{background:#19302b}
+.au-detail progress::-webkit-progress-value{background:repeating-linear-gradient(90deg,#8ee1ae 0 10px,#63b98a 10px 12px)}
+.au-detail progress::-moz-progress-bar{background:#8ee1ae}
+.mc-home.home-tier-2 .mc-home-light.a,.mc-home.home-tier-3 .mc-home-light.a{background:linear-gradient(90deg,transparent,#80ffe556,transparent)}
+.mc-home.home-tier-3 .mc-home-light.b{background:linear-gradient(90deg,transparent,#c9ff635e,transparent)}

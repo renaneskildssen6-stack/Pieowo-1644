@@ -12,7 +12,7 @@ import "./online.css";
 
 const GUEST_KEY = "mecha.guest";
 /** Convidado = conta real e descartável no servidor (e-mail local + senha aleatória guardados no aparelho). */
-async function guestLogin(): Promise<string | null> {
+export async function guestLogin(): Promise<string | null> {
   const opts = { onSuccess: captureBearer };
   let saved: { email: string; password: string } | null = null;
   try { saved = JSON.parse(localStorage.getItem(GUEST_KEY) || "null"); } catch { saved = null; }
@@ -47,7 +47,7 @@ export function OnlineScreen({ onBack, backLabel = "CIDADE", initialTab = "publi
   return <Lobby onBack={onBack} backLabel={backLabel} name={pilotName} initialTab={rankedOnly ? "ranked" : initialTab} rankedOnly={rankedOnly} />;
 }
 
-function AuthPanel({ onBack }: { onBack: () => void }) {
+export function AuthPanel({ onBack }: { onBack: () => void }) {
   const [mode, setMode] = useState<"in" | "up">("in");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");

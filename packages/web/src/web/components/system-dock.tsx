@@ -15,11 +15,12 @@ const GROUPS: Group[] = [
   { id: "jornada", label: "JORNADA", tag: "HISTÓRIA E COMBATE", tone: "#ffb21a", items: ["story", "modes", "tournaments", "ranked", "online", "pantheon", "nexus"] },
   { id: "equipe", label: "EQUIPE", tag: "HANGAR E SUPORTE", tone: "#35e2f0", items: ["roster", "engineer", "lab", "drones", "pets", "cards"] },
   { id: "cidade", label: "CIDADE", tag: "DISTRITOS E RECURSOS", tone: "#6dffb0", items: ["shop", "mine", "contracts", "academy", "power", "observatory", "museum", "portal"] },
+  { id: "rede", label: "SOCIAL", tag: "GUILDAS E COMUNICAÇÕES", tone: "#80fff0", items: ["guild", "social"] },
   { id: "piloto", label: "PILOTO", tag: "REGISTRO E ESTILO", tone: "#ff7ad9", items: ["profile", "mastery", "skins"] },
 ];
 const BUILDING: Partial<Record<Sys, string>> = { roster: "hangar", modes: "arena", tournaments: "tourney", ranked: "ranked", shop: "shop", engineer: "engineer", pets: "pets", cards: "cards", mine: "mine", lab: "lab", observatory: "observatory", academy: "academy", contracts: "contracts", power: "power", museum: "museum", portal: "portal" };
-const OVERHAUL: Partial<Record<Sys, string>> = { story: "story", online: "arena", pantheon: "star", nexus: "ultimate", drones: "repair", profile: "pilot", mastery: "ultimate", skins: "hangar" };
-const SHORT: Partial<Record<Sys, string>> = { modes: "Arena", online: "Online PvP", roster: "Hangar", story: "História", drones: "Drones", profile: "Perfil", lab: "Laboratório", pantheon: "Panteão", nexus: "Portal Nexus" };
+const OVERHAUL: Partial<Record<Sys, string>> = { guild: "shield", social: "holo-a", story: "story", online: "arena", pantheon: "star", nexus: "ultimate", drones: "repair", profile: "pilot", mastery: "ultimate", skins: "hangar" };
+const SHORT: Partial<Record<Sys, string>> = { guild: "Guilda", social: "Chat do Servidor", modes: "Arena", online: "Online PvP", roster: "Hangar", story: "História", drones: "Drones", profile: "Perfil", lab: "Laboratório", pantheon: "Panteão", nexus: "Portal Nexus" };
 const iconOf = (id: Sys) => BUILDING[id] ? `/city/b_${BUILDING[id]}.png` : `/overhaul/${OVERHAUL[id] || "star"}.webp`;
 const nameOf = (id: Sys) => SHORT[id] || SYSTEM_GUIDES[id]?.name || id;
 const QUICK: [Sys, string, string, string][] = [["story", "story", "HISTÓRIA", "#ffb21a"], ["roster", "hangar", "HANGAR", "#35e2f0"], ["modes", "arena", "ARENA", "#ff6a4a"], ["online", "coliseum", "ONLINE", "#a98bff"]];

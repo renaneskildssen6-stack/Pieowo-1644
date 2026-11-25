@@ -1,3 +1,4 @@
+import { freshAurora, normalizeAurora, type Aurora } from "./vespera";
 import { freshStory, normalizeStory, type StoryProgress } from "./story-state";
 import { useSyncExternalStore } from "react";
 import { freshCityLife, normalizeCityLife, type CityLife } from './city-life';
@@ -99,6 +100,7 @@ import {
 
 export interface GameState extends MetaState {
   cityLife: CityLife;
+  aurora: Aurora;
   /** Modo História: capítulos vencidos e escolhas. */
   story: StoryProgress;
   drones: DroneState;
@@ -163,6 +165,7 @@ function initialState(): GameState {
   return {
     version: VERSION,
     cityLife: freshCityLife(),
+    aurora: freshAurora(),
     story: freshStory(),
     drones: freshDrones(),
     pantheon: initialPantheon(),
@@ -280,6 +283,7 @@ function read(): GameState {
       ...parsed,
       version: VERSION,
       cityLife: normalizeCityLife(parsed.cityLife),
+      aurora: normalizeAurora(parsed.aurora),
       story: normalizeStory(parsed.story),
       drones: normalizeDrones(parsed.drones),
       tutorial: normalizeTutorial(parsed.tutorial, parsed.robots.length),

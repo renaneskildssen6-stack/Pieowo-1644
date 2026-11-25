@@ -88,3 +88,10 @@ List each page/screen, its route file, and what it shows. Example:
 - **API**: typed oRPC client (`lib/api.ts` in each package) → the backend in `@template/web`. Query/mutation hooks live in `queries/` (one file per feature); pages/screens call them with `@tanstack/react-query`.
 - **State/sync**: TanStack Query with optimistic updates for instant-feel interactions.
 - **Auth / payments / uploads**: see `skills/app/references/` when those features are needed.
+
+## MECHA CHAMPIONS — Rede social e clãs
+
+Dois terminais na central de sistemas: **Guilda** (âmbar, comando tático) e **Rede Social** (ciano, comunicações). Mantêm PressStart nos títulos, Silkscreen nas ações e fundos de alto contraste. Usam emblemas e retratos existentes; sem nova mídia. A guilda separa quartel, guerra, chefe e arena; a rede separa canais, PV e perfis. Interface em coluna no celular, com estados claros de espera, erro e conexão.
+
+## MECHA CHAMPIONS — Base Aurora e expedição Véspera
+A casa de spawn vira um posto privado com consoles físicos e atalhos locais: Comando, Hangar Orbital, Pesquisa e Arquivo de Véspera. Não hospeda loja, mina, forja, hangar de robôs ou outros sistemas públicos. Tipografia pixel no HUD, texto corrido monoespaçado, âmbar e ciano na base. Véspera tem carta topográfica desenhada para o jogo, mar ácido, vales minerais, rotas visíveis e marcadores interativos; verde mineral e laranja vulcânico destacam informação de missão. Lançamento, progresso planetário, melhorias e descobertas são locais, no save existente. Pesquisa e decoração anteriores são preservadas.

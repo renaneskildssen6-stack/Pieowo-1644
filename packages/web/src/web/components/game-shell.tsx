@@ -41,6 +41,8 @@ const RosterScreen = lazy(() => import("@/screens/roster").then(m => ({ default:
 const ShopScreen = lazy(() => import("@/screens/shop").then(m => ({ default: m.ShopScreen })));
 const TournamentsScreen = lazy(() => import("@/screens/tournaments").then(m => ({ default: m.TournamentsScreen })));
 const TutorialScreen = lazy(() => import("@/screens/tutorial").then(m => ({ default: m.TutorialScreen })));
+const GuildScreen = lazy(() => import("@/screens/guild").then(m => ({ default: m.GuildScreen })));
+const SocialScreen = lazy(() => import("@/screens/social").then(m => ({ default: m.SocialScreen })));
 const OnlineScreen = lazy(() => import("@/screens/online").then(m => ({ default: m.OnlineScreen })));
 
 function ScreenLoading() {
@@ -91,13 +93,14 @@ export function GameShell() {
 
 function GameContent() {
   const [screen, setScreen] = useState<Screen>("menu");
+  const [socialChannel, setSocialChannel] = useState<"global" | "guild">("global");
   const [entry, setEntry] = useState<"title" | "intro" | "tutorial" | "home" | "city" | "online">(() => (import.meta.env.DEV && (new URLSearchParams(location.search).get("entry") as "home" | "city" | null)) || "title");
   const [practice, setPractice] = useState(false);
   const g = useGame();
   const { transition } = useGate();
   const close = () => transition(() => setScreen("menu"));
-  const enter = (id: Screen) => { if (systemUnlocked(getState(), id)) setScreen(id); };
-  const immersive = ["observatory", "academy", "contracts", "power", "museum", "portal", "modes", "ranked", "tournaments", "online", "pantheon", "nexus", "story"].includes(screen);
+  const enter = (id: Screen) => { if (systemUnlocked(getState(), id)) { if (id === "social") setSocialChannel("global"); setScreen(id); } };
+  const immersive = ["observatory", "academy", "contracts", "power", "museum", "portal", "modes", "ranked", "tournaments", "online", "guild", "social", "pantheon", "nexus", "story"].includes(screen);
 
   const beginTutorial = () => {
     const replay = g.tutorial.completed;
@@ -183,7 +186,7 @@ function GameContent() {
       <>
         <ScreenBoundary exitLabel="VOLTAR AO TÍTULO" onExit={() => setEntry("title")}>
           {entry === "home"
-            ? <HomeLab onEnter={enter} onExit={() => transition(() => setEntry("city"))} enabled={screen === "menu"} />
+            ? <HomeLab onExit={() => transition(() => setEntry("city"))} enabled={screen === "menu"} />
             : <HubCity onEnter={enter} enabled={screen === "menu"} onHome={() => transition(() => setEntry("home"))} />}
         </ScreenBoundary>
 
@@ -233,6 +236,8 @@ function GameContent() {
                 {screen === "power" && <PowerScreen onBack={close} />}
                 {screen === "museum" && <MuseumScreen onBack={close} />}
                 {screen === "portal" && <PortalScreen onBack={close} />}
+                {screen === "guild" && <GuildScreen onBack={close} onChat={() => {setSocialChannel("guild");setScreen("social");}} />}
+                {screen === "social" && <SocialScreen onBack={close} initial={socialChannel} />}
                 {screen === "online" && <OnlineScreen backLabel="CIDADE" onBack={close} />}
                 {screen === "pantheon" && <PantheonScreen onBack={close} />}
                 {screen === "nexus" && <GachaScreen onBack={close} />}

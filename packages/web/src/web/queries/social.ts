@@ -1,0 +1,11 @@
+import { useQuery } from "@tanstack/react-query";
+import { client, orpc } from "@/lib/api";
+import { useAccountQuery } from "./network-key";
+export const socialApi = client.social;
+export const useMyProfile = () => useQuery(useAccountQuery({...orpc.social.me.queryOptions(), staleTime: 30000}));
+export const usePilot = (id: string) => useQuery(useAccountQuery({...orpc.social.profile.queryOptions({input:{id}}), enabled: !!id}));
+export const usePilots = (term: string, enabled: boolean) => useQuery(useAccountQuery({...orpc.social.search.queryOptions({input:{term}}), enabled}));
+export const useChat = (scope: "global" | "guild", enabled: boolean) => useQuery(useAccountQuery({...orpc.social.chat.queryOptions({input:{scope}}), enabled, refetchInterval: 2500, retry: false}));
+export const useInbox = () => useQuery(useAccountQuery({...orpc.social.inbox.queryOptions(), refetchInterval: 7000}));
+export const useThread = (id: string, enabled: boolean) => useQuery(useAccountQuery({...orpc.social.thread.queryOptions({input:{id}}), enabled: enabled && !!id, refetchInterval: 2500}));
+export const useBlocked = (id: string, enabled: boolean) => useQuery(useAccountQuery({...orpc.social.blocked.queryOptions({input:{id}}), enabled: enabled && !!id}));

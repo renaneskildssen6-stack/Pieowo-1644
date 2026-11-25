@@ -26,6 +26,13 @@ const SKY_MOVERS:{s:TrafficSprite;depth:number;alt:number;scale:number;v:number;
  {s:'drone',depth:.5,alt:.38,scale:.32,v:-26,x0:600,a:.9,bob:4},
 ];
 
+/* Per-frame allocations hoisted out of the render loop: label widths and the sky gradient never change for a given input. */
+const TEXT_W=new Map<string,number>();
+function textWidth(ctx:CanvasRenderingContext2D,text:string,big:boolean){const k=(big?'B':'s')+text;let v=TEXT_W.get(k);if(v===undefined){v=ctx.measureText(text).width;if(TEXT_W.size<600)TEXT_W.set(k,v);}return v;}
+const SIGN_SMALL="8px 'Silkscreen',monospace",SIGN_BIG="10px 'Silkscreen',monospace";let signFont='';
+let SKY:{ctx:CanvasRenderingContext2D;h:number;g:CanvasGradient}|null=null;
+function skyGradient(ctx:CanvasRenderingContext2D,h:number){if(SKY&&SKY.ctx===ctx&&SKY.h===h)return SKY.g;const g=ctx.createLinearGradient(0,0,0,Math.max(h,1));g.addColorStop(0,'#050b1d');g.addColorStop(.5,'#0a1a36');g.addColorStop(1,'#061224');SKY={ctx,h,g};return g;}
+
 export function renderConnectedCity(ctx:CanvasRenderingContext2D,v:CityView,art:CityArt){
  const {w,h,cameraX:cx,cameraY:cy,avatar:p,time:t,still}=v;
  const project=(x:number,z:number,elevation=0)=>({x:x-cx+z*.16,y:elevation+z*.62-cy});
@@ -54,17 +61,17 @@ export function renderConnectedCity(ctx:CanvasRenderingContext2D,v:CityView,art:
  };
  const sign=(text:string,x:number,z:number,elev=0,color='#97e7ee',big=false)=>{
   const pt=project(x,z,elev);if(pt.x< -200||pt.x>w+200)return;
-  ctx.font=`${big?10:8}px 'Silkscreen',monospace`;ctx.textAlign='center';ctx.textBaseline='alphabetic';
-  const width=ctx.measureText(text).width+(big?22:14),hh=big?24:19;
+  const font=big?SIGN_BIG:SIGN_SMALL;if(signFont!==font){ctx.font=font;signFont=font;}ctx.textAlign='center';ctx.textBaseline='alphabetic';
+  const width=textWidth(ctx,text,big)+(big?22:14),hh=big?24:19;
   ctx.fillStyle='#04111ef0';ctx.fillRect(pt.x-width/2,pt.y-hh+4,width,hh);
   ctx.fillStyle=color;ctx.fillRect(pt.x-width/2,pt.y-hh+4,width,2);ctx.globalAlpha=.55;ctx.strokeStyle=color;ctx.lineWidth=1;ctx.strokeRect(pt.x-width/2+.5,pt.y-hh+4.5,width-1,hh-1);ctx.globalAlpha=1;
   ctx.fillStyle=color;ctx.fillText(text,pt.x,pt.y-(big?3:1));
  };
- ctx.clearRect(0,0,w,h);
+ ctx.clearRect(0,0,w,h);signFont='';
 
  /* ---------------- 1. Sky: AI skyline plates (central ↔ industrial) + original air traffic ---------------- */
  const horizon=project(0,SURFACE_BACK).y;
- const sky=ctx.createLinearGradient(0,0,0,Math.max(h,1));sky.addColorStop(0,'#050b1d');sky.addColorStop(.5,'#0a1a36');sky.addColorStop(1,'#061224');
+ const sky=skyGradient(ctx,h);
  ctx.fillStyle=sky;ctx.fillRect(0,0,w,h);
  if(horizon>-40){
   const H=Math.min(1100,Math.max(440,horizon+80)),W=H*1280/725,top=horizon+80-H,par=.22;
@@ -193,7 +200,7 @@ export function renderConnectedCity(ctx:CanvasRenderingContext2D,v:CityView,art:
    const ghost=walking&&b.front&&p.z<b.faceZ&&Math.abs(p.x-b.x)<170;
    sprite(b.art,b.x,b.faceZ,b.w,b.h,0,ghost?.32:unlocked?1:.62);
    sign(unlocked?b.label:`${b.label} · NV ${UNLOCK_LEVEL[b.id]}`,b.x,b.faceZ,-b.h-8,active?'#ffe1a0':unlocked?'#86e3f0':'#7d97a6',true);
-   if(active){const d=project(b.x,b.doorZ);ctx.font="8px 'Silkscreen',monospace";ctx.textAlign='center';ctx.fillStyle='#ffe7a8';ctx.fillText(unlocked?'▼ ENTRADA':'▼ BLOQUEADO',d.x,d.y-10);}
+   if(active){const d=project(b.x,b.doorZ);ctx.font=SIGN_SMALL;signFont=SIGN_SMALL;ctx.textAlign='center';ctx.fillStyle='#ffe7a8';ctx.fillText(unlocked?'▼ ENTRADA':'▼ BLOQUEADO',d.x,d.y-10);}
   }});
  }
  for(const place of CITY_PLACES){if(!visible(place.x,180))continue;actors.push({z:place.z,draw:()=>{sprite(place.art,place.x,place.z,80,90);sign(place.name,place.x,place.z,-104,v.near===`place:${place.id}`?'#ffde87':'#94d2d9');}});}

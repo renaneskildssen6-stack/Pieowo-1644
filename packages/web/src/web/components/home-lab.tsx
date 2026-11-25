@@ -1,33 +1,31 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { Screen } from '@/screens/menu';
-import { explorerId, setExplorer, useGame } from '@/game/save';
-import { systemUnlocked, UNLOCK_LEVEL } from '@/game/progression';
+import { explorerId, useGame } from '@/game/save';
 import { droneLevel } from '@/game/drone-system';
-import { clipFrame, heroFace, heroSheet, heroPose, drawHeroPosed, type HeroClip } from '@/game/hero';
-import { ROBOT_MAP } from '@/game/robots';
+import { clipFrame, heroSheet, heroPose, drawHeroPosed, type HeroClip } from '@/game/hero';
 import { ExplorationControls } from './exploration-controls';
 import { useGate } from './gate';
 import { HomeExclusive } from './home-exclusive';
+import { AuroraConsole, type AuroraPanel } from './aurora-console';
+import { finishCircuit } from '@/game/aurora-actions';
 import './home-lab.css';
+import './aurora.css';
 
 const WORLD=2700, GRAVITY=2600, JUMP=860, WALK=165, RUN=305;
 const PLATFORMS=[{x:365,h:125,w:140},{x:1010,h:175,w:155},{x:1390,h:135,w:140},{x:1980,h:160,w:165},{x:2290,h:110,w:120}];
 const CORES=[{x:295,h:45},{x:435,h:175},{x:1085,h:225},{x:1490,h:185},{x:2050,h:210},{x:2350,h:160}];
-const stations:{x:number;id:Exclude<Screen,'menu'>|'exit';label:string;sub:string;art:number}[]=[
- {x:190,id:'roster',label:'HANGAR',sub:'Esquadrão e chassis',art:4},
- {x:510,id:'mine',label:'DEPÓSITO',sub:'Minérios e expedições',art:156},
- {x:825,id:'engineer',label:'FORJA',sub:'Equipar e melhorar',art:167},
- {x:1170,id:'drones',label:'BAÍA DE DRONES',sub:'Construir e vincular',art:112},
- {x:1525,id:'lab',label:'LABORATÓRIO',sub:'Projetar chassis',art:183},
- {x:1835,id:'profile',label:'ARQUIVO',sub:'Registro do piloto',art:255},
- {x:2170,id:'shop',label:'SUPRIMENTOS',sub:'Loja e cápsulas',art:53},
+type Terminal = AuroraPanel|'research';
+const stations:{x:number;id:Terminal|'exit';label:string;sub:string;art:number}[]=[
+ {x:280,id:'research',label:'PESQUISA PRIVADA',sub:'Biometria e projetos',art:183},
+ {x:825,id:'command',label:'COMANDO DA BASE',sub:'Melhorias da Aurora',art:167},
+ {x:1310,id:'orbital',label:'HANGAR ORBITAL',sub:'Expedição Véspera',art:112},
+ {x:1835,id:'archive',label:'ARQUIVO DE VÉSPERA',sub:'Descobertas e distintivos',art:255},
  {x:2500,id:'exit',label:'SAÍDA',sub:'Explorar a cidade',art:207},
 ];
 type Player={x:number;y:number;vx:number;vy:number;face:1|-1;grounded:boolean;coyote:number;jumps:number};
 type Visual={clip:HeroClip;near:string|null;attack:boolean};
 
-export function HomeLab({onEnter,onExit,enabled=true}:{onEnter:(id:Exclude<Screen,'menu'>)=>void;onExit:()=>void;enabled?:boolean}){
- const g=useGame();const hero=explorerId(g);const {transition,busy}=useGate();
+export function HomeLab({onExit,enabled=true}:{onExit:()=>void;enabled?:boolean}){
+ const g=useGame();const hero=explorerId(g);const {busy}=useGate();
  const root=useRef<HTMLElement>(null);const canvas=useRef<HTMLCanvasElement>(null);
  const worldNode=useRef<HTMLDivElement>(null);const avatarNode=useRef<HTMLDivElement>(null);const dust=useRef<HTMLSpanElement>(null);const progressMeter=useRef<HTMLSpanElement>(null);
  const coreNodes=useRef<(HTMLSpanElement|null)[]>([]);
@@ -35,12 +33,13 @@ export function HomeLab({onEnter,onExit,enabled=true}:{onEnter:(id:Exclude<Scree
  const keys=useRef({left:false,right:false,run:false,jumpHeld:false});const analog=useRef(0);
  const jumpBuf=useRef(0);const actionUntil=useRef(0);const actionClip=useRef<HeroClip>('attack');
  const specialUntil=useRef(0);const lastCooldown=useRef(-1);const [cooldown,setCooldown]=useState(0);const [score,setScore]=useState(0);
- const collected=useRef<number[]>(CORES.map(()=>0));const [picker,setPicker]=useState(false);const [exclusive,setExclusive]=useState(false);
- const [v,setVisual]=useState<Visual>({clip:'idle',near:'engineer',attack:false});
+ const collected=useRef(new Set<number>());
+ const [terminal,setTerminal]=useState<Terminal|null>(()=>g.aurora.mission?'orbital':null);
+ const closeTerminal=useCallback(()=>setTerminal(null),[]);
+ const collectCore=useCallback((i:number)=>{if(collected.current.has(i))return;collected.current.add(i);if(coreNodes.current[i])coreNodes.current[i]!.style.opacity='0';setScore(collected.current.size);if(collected.current.size===CORES.length)finishCircuit()},[]);
+ const [v,setVisual]=useState<Visual>({clip:'idle',near:'command',attack:false});
  const visualRef=useRef(v);
- const active=enabled&&!busy&&!picker&&!exclusive;const activeRef=useRef(active);activeRef.current=active;
- const stateRef=useRef(g);stateRef.current=g;
- const enterRef=useRef(onEnter);enterRef.current=onEnter;
+ const active=enabled&&!busy&&!terminal;const activeRef=useRef(active);activeRef.current=active;
  const exitRef=useRef(onExit);exitRef.current=onExit;
  const image=useRef<HTMLImageElement|null>(null);
  const nearest=stations.reduce((a,b)=>Math.abs(b.x-p.current.x)<Math.abs(a.x-p.current.x)?b:a);
@@ -50,10 +49,10 @@ export function HomeLab({onEnter,onExit,enabled=true}:{onEnter:(id:Exclude<Scree
  const interact=useCallback(()=>{
   if(!activeRef.current)return;
   const P=p.current;const station=stations.find(s=>Math.abs(P.x-s.x)<115&&P.y<10);
-  if(!station||station.id!=='exit'&&!systemUnlocked(stateRef.current,station.id))return;
+  if(!station)return;
   actionClip.current='interact';actionUntil.current=performance.now()+420;
-  if(station.id==='exit')exitRef.current();else transition(()=>enterRef.current(station.id as Exclude<Screen,'menu'>));
- },[transition]);
+  if(station.id==='exit')exitRef.current();else setTerminal(station.id);
+ },[]);
  const action=useRef(interact);action.current=interact;
  const doJump=useCallback(()=>{if(!activeRef.current)return;jumpBuf.current=.13;keys.current.jumpHeld=true},[]);
  const attack=useCallback(()=>{if(!activeRef.current)return;actionClip.current='attack';actionUntil.current=performance.now()+420},[]);
@@ -61,13 +60,15 @@ export function HomeLab({onEnter,onExit,enabled=true}:{onEnter:(id:Exclude<Scree
   if(!activeRef.current||performance.now()<specialUntil.current)return;
   specialUntil.current=performance.now()+4000;
   actionClip.current='attack';actionUntil.current=performance.now()+650;
-  CORES.forEach((c,i)=>{if(collected.current[i]<=performance.now()&&Math.hypot(c.x-p.current.x,c.h-(p.current.y+40))<220){collected.current[i]=performance.now()+14000;setScore(n=>n+10)}});
- },[]);
+  CORES.forEach((c,i)=>{if(Math.hypot(c.x-p.current.x,c.h-(p.current.y+40))<220)collectCore(i)});
+ },[collectCore]);
  const jumpRef=useRef(doJump);jumpRef.current=doJump;
  const attackRef=useRef(attack);attackRef.current=attack;
  const specialRef=useRef(special);specialRef.current=special;
  useEffect(()=>{
-  const down=(e:KeyboardEvent)=>{if(!activeRef.current)return;const k=e.key.toLowerCase();
+  const down=(e:KeyboardEvent)=>{if(!activeRef.current||e.defaultPrevented)return;const k=e.key.toLowerCase();
+   if(e.target instanceof Element&&e.target.closest('input,textarea,[contenteditable],select'))return;
+   if((k==='enter'||k===' ')&&e.target instanceof Element&&e.target.closest('button,a'))return;
    if(k==='a'||k==='arrowleft')keys.current.left=true;
    else if(k==='d'||k==='arrowright')keys.current.right=true;
    else if(k==='shift')keys.current.run=true;
@@ -125,9 +126,7 @@ export function HomeLab({onEnter,onExit,enabled=true}:{onEnter:(id:Exclude<Scree
    if(avatarCanvas&&avatarCanvas.style.transform!==facing)avatarCanvas.style.transform=facing;
    if(progressMeter.current){const width=`${P.x/WORLD*100}%`;if(progressMeter.current.style.width!==width)progressMeter.current.style.width=width}
    CORES.forEach((core,i)=>{
-    const available=collected.current[i]<=now;const node=coreNodes.current[i];
-    if(node&&node.style.opacity!==(available?'1':'0'))node.style.opacity=available?'1':'0';
-    if(available&&Math.abs(core.x-P.x)<28&&Math.abs(core.h-(P.y+40))<44){collected.current[i]=now+14000;if(node)node.style.opacity='0';setScore(n=>n+10)}
+    if(!collected.current.has(i)&&Math.abs(core.x-P.x)<28&&Math.abs(core.h-(P.y+40))<44)collectCore(i);
    });
    if(now-lastPaint>33){
     lastPaint=now;
@@ -146,29 +145,27 @@ export function HomeLab({onEnter,onExit,enabled=true}:{onEnter:(id:Exclude<Scree
   const visibility=()=>document.hidden?stop():start();
   window.addEventListener('blur',reset);document.addEventListener('visibilitychange',visibility);start();
   return()=>{stop();window.removeEventListener('blur',reset);document.removeEventListener('visibilitychange',visibility)};
- },[active]);
- return <section className={`mc-home home-style-${g.cityLife.homeStyle}`} ref={root} aria-label="Casa-laboratório do piloto">
-  <div ref={worldNode} className="mc-home-world" style={{width:WORLD,transform:'translate3d(-585px,0,0)'}}>
+ },[active,collectCore]);
+ return <section className={`mc-home home-style-${g.cityLife.homeStyle} home-tier-${g.aurora.command}`} ref={root} aria-label="Base Aurora — casa do piloto">
+  <div inert={!!terminal} ref={worldNode} className="mc-home-world" style={{width:WORLD,transform:'translate3d(-585px,0,0)'}}>
    <div className="mc-home-back"/><div className="mc-home-light a"/><div className="mc-home-light b"/>
    <div className="mc-home-floor"/><div className="mc-home-stripe"/>
-   <div className="mc-home-room-label" style={{left:80}}>01 / QUARTO & HANGAR</div><div className="mc-home-room-label" style={{left:690}}>02 / FORJA</div><div className="mc-home-room-label" style={{left:1100}}>03 / PESQUISA</div><div className="mc-home-room-label" style={{left:1940}}>04 / ÁTRIO</div>
+   <div className="mc-home-room-label" style={{left:80}}>01 / PESQUISA</div><div className="mc-home-room-label" style={{left:690}}>02 / COMANDO</div><div className="mc-home-room-label" style={{left:1100}}>03 / HANGAR ORBITAL</div><div className="mc-home-room-label" style={{left:1940}}>04 / ARQUIVO</div>
    {PLATFORMS.map((s,i)=><div key={i} className="mc-home-platform" style={{left:s.x,width:s.w,bottom:`calc(var(--home-ground) + ${s.h}px)`}}/>)}
-   {CORES.map((c,i)=><span key={i} ref={node=>{coreNodes.current[i]=node}} className="mc-home-core" style={{left:c.x,bottom:`calc(var(--home-ground) + ${c.h}px)`,opacity:collected.current[i]>performance.now()?0:1}}/>)}
-   {stations.map(s=>{const unlocked=s.id==='exit'||systemUnlocked(g,s.id);const nearby=v.near===s.id;
-    return <button className={`mc-home-station ${s.id==='exit'?'exit':s.id==='engineer'?'forge':''}`} key={s.id} style={{left:s.x}} onClick={interact} disabled={!active||!unlocked||!nearby} aria-label={`${s.label}: ${s.sub}${!unlocked?` · desbloqueia no nível ${UNLOCK_LEVEL[s.id as Exclude<Screen,'menu'>]}`:''}`}>
-     <span className="mc-home-station-icon"><img src={`/${s.id==='engineer'?'mining':'city'}-sprites/${String(s.art).padStart(3,'0')}.png`} alt=""/></span><strong>{s.label}</strong><small>{s.sub}</small><i>{!unlocked?`DESBLOQUEIA NV ${UNLOCK_LEVEL[s.id as Exclude<Screen,'menu'>]}`:nearby?'INTERAGIR →':'APROXIME-SE →'}</i>
+   {!g.aurora.circuit&&CORES.map((c,i)=><span key={i} ref={node=>{coreNodes.current[i]=node}} className="mc-home-core" style={{left:c.x,bottom:`calc(var(--home-ground) + ${c.h}px)`,opacity:collected.current.has(i)||g.aurora.circuit?0:1}}/>)}
+   {stations.map(s=>{const nearby=v.near===s.id;
+    return <button className={`mc-home-station ${s.id==='exit'?'exit':s.id==='command'?'forge':''}`} key={s.id} style={{left:s.x}} onClick={interact} disabled={!active||!nearby} aria-label={`${s.label}: ${s.sub}`}>
+     <span className="mc-home-station-icon"><img src={`/${s.id==='command'?'mining':'city'}-sprites/${String(s.art).padStart(3,'0')}.png`} alt=""/></span><strong>{s.label}</strong><small>{s.sub}</small><i>{nearby?'INTERAGIR →':'APROXIME-SE →'}</i>
     </button>})}
    <span ref={dust} className="mc-home-dust" aria-hidden><i/><i/><i/></span>
    <div ref={avatarNode} className="mc-home-avatar" style={{left:825,transform:'translateX(-50%)'}}><div className={`mc-home-hero ${v.clip} ${v.attack?'acting':''}`}><canvas ref={canvas} width={128} height={128} aria-label="Animação do piloto"/>{droneLevel(g,hero)>0&&<img className="mc-home-drone" src={`/drones/${hero}_drone.png?v=3`} alt=""/>}</div><span>VOCÊ</span></div>
   </div>
-  <div className="mc-home-top"><span className="mc-home-mark">MC</span><div><small>BASE DO PILOTO · SETOR 01</small><strong>SEU LABORATÓRIO</strong></div><span className="mc-home-pilot">NV {g.playerLevel}<br/>NÚCLEOS {score}</span></div>
-  <button className="mc-home-picker-trigger" onClick={()=>setPicker(true)} disabled={!enabled||busy}><img src={heroFace(hero)} alt=""/> TROCAR</button>
-  <button className="mc-home-exclusive-trigger" onClick={()=>setExclusive(true)} disabled={!enabled||busy}>NÚCLEO PRIVADO · PESQUISA</button>
-  <button className="mc-home-city-link" onClick={onExit} disabled={!enabled||busy}>SAIR PARA A CIDADE ↗</button>
+  <div className="mc-home-top"><span className="mc-home-mark">MC</span><div><small>BASE DO PILOTO · SETOR 01</small><strong>BASE AURORA · NV {g.aurora.command}</strong></div><span className="mc-home-pilot" title="Colete os seis núcleos da casa. O especial recolhe núcleos próximos.">NV {g.playerLevel}<br/>{g.aurora.circuit?'CIRCUITO CONCLUÍDO':`CIRCUITO ${score}/${CORES.length}`}</span></div>
+  <nav className="mc-home-shortcuts" aria-label="Terminais exclusivos da casa">{stations.map(s=>s.id==='exit'?null:<button key={s.id} data-planet={s.id==='orbital'} disabled={!active} onClick={()=>{if(s.id!=='exit')setTerminal(s.id)}}>{s.id==='orbital'&&g.aurora.mission?'RETOMAR VÉSPERA':s.label}</button>)}</nav>
+  <button className="mc-home-city-link" onClick={onExit} disabled={!active}>SAIR PARA A CIDADE ↗</button>
   <div className="mc-home-footer"><div className="mc-home-progress"><span ref={progressMeter} style={{width:`${p.current.x/WORLD*100}%`}}/></div><div className="mc-home-help">A/D · ANDAR &nbsp; W/Z · 2× PULO &nbsp; F · ATAQUE &nbsp; Q · ESPECIAL &nbsp; E · ENTRAR <b>{close?`${nearest.label} AO ALCANCE`:'EXPLORE A CASA →'}</b></div></div>
-  {close&&<button className="mc-home-near" onClick={interact} disabled={!active||nearest.id!=='exit'&&!systemUnlocked(g,nearest.id)}>{nearest.id!=='exit'&&!systemUnlocked(g,nearest.id)?`LIBERA NO NV ${UNLOCK_LEVEL[nearest.id]}`:`ENTRAR • ${nearest.label}`}</button>}
+  {close&&<button className="mc-home-near" onClick={interact} disabled={!active}>ENTRAR • {nearest.label}</button>}
   <ExplorationControls onMove={(x)=>{analog.current=x}} onJump={doJump} onJumpEnd={()=>{keys.current.jumpHeld=false}} onAttack={attack} onSpecial={special} cooldown={cooldown} onInteract={interact} interactReady={close&&active} disabled={!active}/>
-  {picker&&<div className="mc-home-picker"><h2>EXPLORAR COM</h2><p>O escolhido anda, corre, pula e ataca em casa e na cidade.</p><div>{g.robots.map(r=><button key={r.id} onClick={()=>{setExplorer(r.id);setPicker(false)}}><img src={heroFace(r.id)} alt=""/><span>{ROBOT_MAP[r.id]?.name||r.id}<small>NV {r.level}</small></span></button>)}</div><button onClick={()=>setPicker(false)}>FECHAR</button></div>}
-  {exclusive&&<HomeExclusive onClose={()=>setExclusive(false)}/>}
+  {terminal==='research'?<HomeExclusive onClose={closeTerminal}/>:terminal&&<AuroraConsole panel={terminal} onClose={closeTerminal} onPanel={setTerminal}/>}
  </section>;
 }

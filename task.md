@@ -88,3 +88,25 @@ Não feito: gamepad, áudio, novos NPCs andando. Hub antigo e metrô modal antig
 - Novo components/battle-fx.tsx: 2 canvases low-res (SCALE 3), 30/24fps, cap 170/90 partículas, pausa em hidden, reduced-motion = frame estático. Ambiente por arena/clima, feixes, holofotes, lâmpadas, poças de luz, drone, sombra dinâmica com furos, faíscas/anéis/luz de impacto, fumaça de KO.
 - Intensidades reduzidas após teste visual (sem estouro de brilho).
 - ui-test ?v=story para smoke test (/home/user/st.py).
+
+## Rodada 21 — Portal NEXUS (gacha) + ritmo de batalha
+- BATTLE_PACE=0.5 (game/battle-pace.ts), turbo removido; gaps ≤ ~290ms.
+- 59 robôs gacha (game/gacha-robots.ts, ids g_*): C20/R18/E11/L7/M3. Só catálogo (sem arte drone, fora do online).
+- game/gacha.ts: taxas C55/R28/E12/L4.2/M0.8; pity 10→≥E, soft 45, 60→L/M; x1 1500 ouro/20◆, x10 13500/180◆, fragmentos; 1 grátis/dia; duplicatas → ouro+fragmentos.
+- screens/gacha.tsx + gacha.css, components/gacha-card.tsx; vídeos portal 3fps; botão NEXUS no dock (orbe prismático + GRÁTIS).
+
+## Rodada 22 — Bug online + otimização
+- Bug: vs-screen reiniciava o setTimeout(onDone) a cada render (relógio do OnlineBattle a 4Hz) → VS nunca fechava, comandos ocultos. Fix: onDone em ref, effect [] .
+- online-battle: TurnClock e Bubbles memoizados; send estável; tela não re-renderiza 4×/s.
+- api/online/service.ts waitMatch: retry 200ms em erro transitório (ORPCError continua propagando).
+- Cidade: setHud só quando valor visível muda (posição/minimapa via DOM direto); setLoading quantizado; callbacks estáveis; cache de measureText/fonte/gradiente do céu.
+- CSS: grão do filme (tela cheia, mix-blend) agora via transform no compositor; anel do NEXUS gira por transform (antes @property por frame); anel do botão "usar" via transform (antes inset → layout).
+- Medido (CPU 4× throttle, cidade): 11.8 fps → 41.2 fps; long tasks 23 (1361ms) → 0; RecalcStyle/Layout 117+117 → 123+43 /3s; jsxDEV saiu do perfil. Outras telas 60fps.
+
+## Rodada 23 — Guildas e social
+- Guildas com diretório, brasões, pedidos de entrada, cargos, defesa configurável e progressão.
+- Guerras entre guildas (24h, três ataques por piloto, defesa registrada no pareamento), chefe semanal com HP compartilhado e duelos internos x1/x2 ao vivo.
+- Chat global e de guilda, PV com não lidas, bloqueio e perfis públicos. Acesso: Cidade → Sistemas → Social.
+- Drizzle/Turso atualizado; tsc web e API aprovados. As 26 RPCs protegidas devolveram 401 sem sessão. Smoke Chromium com três contas confirmou privacidade de PV, permissões do chat, entrada por aprovação, ataque de guerra, x1/x2 e dano compartilhado no chefe; sem erros no navegador. Encerramento de guerra e subida de tier do chefe não verificados de ponta a ponta.
+- Telas novas usam arte existente: a renovação visual completa ficou pendente por falta de créditos de geração.
+- Bundle de produção sem processamento de mídia compilou; build completo ainda estava otimizando assets na verificação. Proxy Runable confirmado servindo MECHA CHAMPIONS e a RPC protegida de guilda.

@@ -36,6 +36,6 @@
 .mc-connected-use::after{content:"";position:absolute;inset:-4px;border:2px solid #42d5d2;animation:mc-use-ring 1.4s ease-out infinite;pointer-events:none}
 @keyframes mc-map-ping{50%{box-shadow:0 0 0 3px #ffcd7444,0 0 8px #ffcd74}}
 @keyframes mc-use-pop{from{opacity:0;transform:translateX(-50%) translateY(10px) scale(.85)}}
-@keyframes mc-use-ring{from{opacity:.8}to{opacity:0;inset:-12px}}
+@keyframes mc-use-ring{from{opacity:.8}to{opacity:0;transform:scale(1.05,1.35)}}
 @media(max-height:500px){.mc-hud-sub .mc-connected-location span,.mc-hud-sub .mc-connected-map{display:none}.mc-hud-sub .mc-connected-location{padding:4px 8px}}
 @media(prefers-reduced-motion:reduce){.mc-hud-sub .mc-connected-map i,.mc-connected-use,.mc-connected-use::after{animation:none}}

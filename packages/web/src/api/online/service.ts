@@ -2,7 +2,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { and, eq, desc, sql, isNull, gt } from "drizzle-orm";
 import { ORPCError } from "@orpc/server";
 import { db } from "../database";
-import { onlineTickets as tickets, onlineMatches as matches, onlineRecords as records, onlineReceipts as receipts, onlineRooms as rooms } from "../database/schema";
+import { guildBattles, onlineTickets as tickets, onlineMatches as matches, onlineRecords as records, onlineReceipts as receipts, onlineRooms as rooms } from "../database/schema";
 import { botTeam, competitiveCombat, perspective, playOnline, validateTeam, TURN_MS } from "./engine";
 import type { BattleEvent, Combat, CombatAction, Side } from "../../web/game/combat";
 import { compactEvents, eventsFor, type Transition } from "./events";
@@ -254,13 +254,18 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 export async function waitMatch(user: User, id: string, revision: number, chatAt: number): Promise<OnlineMatchView> {
   const until = Date.now() + 12_000; let lastFull = 0;
   for (;;) {
-    const [row] = await db.select({ revision: matches.revision, chat: matches.chat, finished: matches.finished, deadline: matches.deadline, nextId: matches.nextId, rematch: matches.rematch }).from(matches).where(eq(matches.id, id));
+    let row: { revision: number; chat: string | null; finished: number | boolean | null; deadline: number; nextId: string | null } | undefined;
+    // Banco ocupado (escrita do bot/rival) não deve virar erro 500 no long-poll: tenta de novo até o limite.
+    try { [row] = await db.select({ revision: matches.revision, chat: matches.chat, finished: matches.finished, deadline: matches.deadline, nextId: matches.nextId, rematch: matches.rematch }).from(matches).where(eq(matches.id, id)); }
+    catch (e) { if (Date.now() >= until) throw e; await sleep(200); continue; }
     if (!row) throw new ORPCError("NOT_FOUND", { message: "Partida não encontrada." });
     const chat: ChatLine[] = JSON.parse(row.chat || "[]");
     const changed = row.revision !== revision || (chat[chat.length - 1]?.at ?? 0) > chatAt || !!row.nextId;
     const now = Date.now();
     if (changed || now >= until || (!row.finished && now >= row.deadline) || now - lastFull > 6000) {
-      const v = await matchState(user, id);
+      let v: OnlineMatchView;
+      try { v = await matchState(user, id); }
+      catch (e) { if (e instanceof ORPCError || Date.now() >= until) throw e; await sleep(200); continue; }
       if (changed || now >= until || v.revision !== revision) return v;
       lastFull = now;
     }
@@ -304,6 +309,8 @@ export async function rematch(user: User, id: string) {
     const now = Date.now(); const m = await oneMatch(tx, id); const c: Combat = JSON.parse(m.state);
     pilotOf(m, c, user.id);
     if (!m.finished) fail("A partida ainda não terminou.");
+    const [guildBattle] = await tx.select({ id: guildBattles.matchId }).from(guildBattles).where(eq(guildBattles.matchId, id));
+    if (guildBattle) fail("Abra um novo desafio pelo quartel da guilda.");
     if (m.nextId) return { nextId: m.nextId };
     if (m.ranked) fail("Ranqueada não tem revanche — volte à fila para a próxima.");
     const votes = new Set<string>(JSON.parse(m.rematch || "[]")); votes.add(user.id);

@@ -23,5 +23,7 @@ export type Screen =
   | "portal"
   | "pantheon"
   | "nexus"
+  | "guild"
+  | "social"
   | "online"
   | "story";

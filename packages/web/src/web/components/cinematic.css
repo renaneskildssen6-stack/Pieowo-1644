@@ -1,9 +1,11 @@
 /* Passe cinematográfico global: película, entradas de tela em widescreen, diálogos e cenas com câmera. */
 .mc-film{position:absolute;inset:0;z-index:58;pointer-events:none;mix-blend-mode:overlay;opacity:.16;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  animation:mc-grain .5s steps(5) infinite}
+  animation:mc-grain .5s steps(5) infinite;
+  /* Grain moves on the compositor: the noise tile is rasterised once and translated instead of repainted. */
+  inset:-64px;will-change:transform}
 .mc-film-vignette{position:absolute;inset:0;z-index:57;pointer-events:none;background:radial-gradient(ellipse 80% 75% at 50% 48%,transparent 62%,#01030acc 100%)}
-@keyframes mc-grain{0%{background-position:0 0}20%{background-position:-37px 21px}40%{background-position:53px -11px}60%{background-position:-19px -47px}80%{background-position:29px 61px}100%{background-position:0 0}}
+@keyframes mc-grain{0%{transform:translate(0,0)}20%{transform:translate(-37px,21px)}40%{transform:translate(53px,-11px)}60%{transform:translate(-19px,-47px)}80%{transform:translate(29px,61px)}100%{transform:translate(0,0)}}
 
 /* Telas do sistema abrem como um corte de cinema */
 .mc-cine-screen{animation:mc-screen-in .62s cubic-bezier(.2,.8,.2,1) both}

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { RobotSprite } from "@/components/pixel";
 import { AchIcon, AnimBg, RankSeal } from "@/components/meta-ui";
 import { CARD_BGS, MASTERY_RANKS, rankIndexOf, skinOfRobot } from "@/game/meta";
@@ -29,10 +29,13 @@ export function VsScreen({
   onDone: () => void;
 }) {
   const g = useGame();
+  // Ref: o pai pode re-renderizar a cada 250ms (relógio online) com um onDone novo; o timer não pode reiniciar.
+  const done = useRef(onDone);
+  done.current = onDone;
   useEffect(() => {
-    const id = window.setTimeout(onDone, 2200);
+    const id = window.setTimeout(() => done.current(), 2200);
     return () => window.clearTimeout(id);
-  }, [onDone]);
+  }, []);
   const pm = g.mastery[playerId];
   const prk = rankIndexOf(pm?.pts ?? 0);
   const pdef = ROBOT_MAP[playerId];

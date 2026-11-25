@@ -45,8 +45,9 @@ export function HubCity({onEnter,enabled=true,onHome}:{onEnter:(id:Exclude<Scree
   else if(n.kind==='building'&&systemUnlocked(state.current.game,n.id as Screen))state.current.transition(()=>state.current.onEnter(n.id as Exclude<Screen,'menu'>));
  },[]);
  const jump=useCallback(()=>{if(free()){jumpPending.current=true;input.current.jumpHeld=true;}},[]);
- const attack=()=>{if(free())actUntil.current=performance.now()+430;};
- const special=()=>{const now=performance.now();if(!free()||now<coolUntil.current)return;coolUntil.current=now+4000;actUntil.current=now+650;if(mode.current==='surface')cores.current.forEach(c=>{if(c.available<=now/1000&&distance(c,p.current)<180){c.available=now/1000+14;score.current+=10;}});};
+ const attack=useCallback(()=>{if(free())actUntil.current=performance.now()+430;},[]);
+ const special=useCallback(()=>{const now=performance.now();if(!free()||now<coolUntil.current)return;coolUntil.current=now+4000;actUntil.current=now+650;if(mode.current==='surface')cores.current.forEach(c=>{if(c.available<=now/1000&&distance(c,p.current)<180){c.available=now/1000+14;score.current+=10;}});},[]);
+ const onMove=useCallback((x:number,z:number)=>{analog.current={x,z};},[]),onJumpEnd=useCallback(()=>{input.current.jumpHeld=false;},[]);
  const actions=useRef({interact,jump,attack,special});actions.current={interact,jump,attack,special};
  useEffect(()=>{
   const down=(e:KeyboardEvent)=>{
@@ -67,10 +68,10 @@ export function HubCity({onEnter,enabled=true,onHome}:{onEnter:(id:Exclude<Scree
   return()=>{window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',reset);};
  },[]);
  useEffect(()=>{
-  const c=canvas.current,wrap=root.current;if(!c||!wrap)return;const ctx=c.getContext('2d') as CanvasRenderingContext2D;if(!ctx)return;
+  const c=canvas.current,wrap=root.current as HTMLDivElement;if(!c||!wrap)return;const ctx=c.getContext('2d') as CanvasRenderingContext2D;if(!ctx)return;
   let w=480,h=844,raf=0,last=performance.now(),paint=0;
   const art=new CityArt();art.preload(CRITICAL_ART);art.preload(STREAMED_ART);
-  const veilStart=performance.now();let veilOpen=true,lastDistrict='';
+  const veilStart=performance.now();let veilOpen=true,lastDistrict='',lastLoad=-1,hudKey='';
   // Reduced motion is read once and kept in sync instead of being queried per frame.
   const motion=matchMedia('(prefers-reduced-motion: reduce)');let still=motion.matches;const onMotion=()=>{still=motion.matches;};motion.addEventListener('change',onMotion);
   // Pause the loop while the tab is hidden; resume without a giant dt spike.
@@ -103,7 +104,7 @@ export function HubCity({onEnter,enabled=true,onHome}:{onEnter:(id:Exclude<Scree
    const elapsed=Math.min(.1,(now-last)/1000);last=now;acc+=elapsed;let steps=0;
    while(acc>=STEP&&steps<10){simulate(STEP,now);acc-=STEP;steps++;}if(steps>=10)acc=0;
    const dt=elapsed;
-   if(veilOpen){const progress=art.progress(CRITICAL_ART);if(progress>=1||now-veilStart>6000){veilOpen=false;setLoading(0);}else setLoading(Math.max(.01,progress));}
+   if(veilOpen){const progress=art.progress(CRITICAL_ART);if(progress>=1||now-veilStart>6000){veilOpen=false;setLoading(0);}else{const q=Math.max(.01,Math.round(progress*100)/100);if(q!==lastLoad){lastLoad=q;setLoading(q);}}}
    const districtName=district(P.x);if(districtName!==lastDistrict){if(lastDistrict)setBanner({name:districtName,key:now});lastDistrict=districtName;}
    const candidates:{item:Near;d:number}[]=[];
    if(!journey.current&&P.height<12){
@@ -120,19 +121,25 @@ export function HubCity({onEnter,enabled=true,onHome}:{onEnter:(id:Exclude<Scree
    const targetX=Math.max(-40,Math.min(CITY_WIDTH-w+40,P.x+P.z*.16-w*.5));const targetY=P.elevation+P.z*.62-h*.55-Math.min(90,P.height*.25);
    camera.current.x+=(targetX-camera.current.x)*Math.min(1,dt*7);camera.current.y+=(targetY-camera.current.y)*Math.min(1,dt*5);
    renderConnectedCity(ctx,{w,h,cameraX:camera.current.x,cameraY:camera.current.y,time:now/1000,avatar:P,hero:S.hero,game:S.game,near:nearRef.current?.key||'',mode:mode.current,trainX:mode.current==='ride'?P.x:null,still,cores:cores.current,traffic:traffic.current},art);
-   if(now-paint>65){paint=now;const j=journey.current;setHud({mode:mode.current,x:P.x,z:P.z,score:score.current,progress:j?j.elapsed/j.duration:0,station:j?.station.name||'',cooldown:Math.max(0,(coolUntil.current-now)/1000)});}
+   if(now-paint>65){paint=now;const j=journey.current;
+    // Position-only data goes straight to the DOM; React re-renders only when a visible HUD value changes.
+    wrap.dataset.playerX=P.x.toFixed(1);wrap.dataset.playerZ=P.z.toFixed(1);wrap.dataset.playerLevel=P.elevation.toFixed(1);
+    const dot=wrap.querySelector<HTMLElement>('.mc-connected-map i');if(dot){dot.style.left=`${P.x/CITY_WIDTH*100}%`;dot.style.top=mode.current==='surface'?P.z<0?'2px':'11px':'20px';}
+    const next={mode:mode.current,x:P.x,z:P.z,score:score.current,progress:j?Math.round(j.elapsed/j.duration*50)/50:0,station:j?.station.name||'',cooldown:Math.ceil(Math.max(0,(coolUntil.current-now)/1000)*10)/10};
+    const key=`${next.mode}|${next.score}|${next.progress}|${next.station}|${next.cooldown}|${district(P.x)}|${Math.abs(P.z)<85?0:P.z<0?1:2}`;
+    if(key!==hudKey){hudKey=key;setHud(next);}}
    raf=document.hidden?0:requestAnimationFrame(frame);
   }
   raf=requestAnimationFrame(frame);return()=>{cancelAnimationFrame(raf);ro.disconnect();motion.removeEventListener('change',onMotion);document.removeEventListener('visibilitychange',onVisibility);};
  },[]);
  const travelling=['descending','ascending','ride'].includes(hud.mode);
  const location=hud.mode==='surface'?Math.abs(hud.z)<85?'AVENIDA':hud.z<0?'CALÇADA NORTE':'CALÇADA SUL':'SUBSOLO / LINHA AURORA';
- return <div className="mc-connected-city" ref={root} data-mode={hud.mode} data-player-x={hud.x.toFixed(1)} data-player-z={hud.z.toFixed(1)} data-player-level={p.current.elevation.toFixed(1)} data-near={near?.key||''} data-art-ready={loading?'false':'true'}>
+ return <div className="mc-connected-city" ref={root} data-mode={hud.mode} data-player-x={p.current.x.toFixed(1)} data-player-z={p.current.z.toFixed(1)} data-player-level={p.current.elevation.toFixed(1)} data-near={near?.key||''} data-art-ready={loading?'false':'true'}>
   <canvas ref={canvas} aria-label="Cidade e metrô no mesmo mapa"/>
   {loading>0&&<div className="mc-connected-veil" role="status"><strong>LINHA AURORA</strong><span>CARREGANDO DISTRITOS · {Math.round(loading*100)}%</span><i style={{width:`${Math.round(loading*100)}%`}}/></div>}
   {banner&&!loading&&<div className="mc-connected-banner" key={banner.key} onAnimationEnd={()=>setBanner(null)}><small>DISTRITO</small>{banner.name}</div>}
   <SystemDock score={hud.score} onHome={hud.mode==='surface'?onHome:undefined} disabled={busy||!enabled||picker||!!destination||routes||travelling} onEnter={id=>{if(systemUnlocked(game,id))transition(()=>onEnter(id));}}>
-   <div className="mc-connected-location"><small>{district(hud.x)}</small><strong>{location}</strong><span>{hud.mode==='surface'?'WASD / SETAS · MOVER':'PLATAFORMA CONTÍNUA · −24 M'}<br/>ESPAÇO / Z · PULO &nbsp; E · INTERAGIR</span><div className="mc-connected-map"><i style={{left:`${hud.x/CITY_WIDTH*100}%`,top:hud.mode==='surface'?hud.z<0?'2px':'11px':'20px'}}/>{STATIONS.map(s=><b key={s.id} style={{left:`${s.entryX/CITY_WIDTH*100}%`}}/>)}</div></div>
+   <div className="mc-connected-location"><small>{district(hud.x)}</small><strong>{location}</strong><span>{hud.mode==='surface'?'WASD / SETAS · MOVER':'PLATAFORMA CONTÍNUA · −24 M'}<br/>ESPAÇO / Z · PULO &nbsp; E · INTERAGIR</span><div className="mc-connected-map"><i style={{left:`${p.current.x/CITY_WIDTH*100}%`,top:hud.mode==='surface'?p.current.z<0?'2px':'11px':'20px'}}/>{STATIONS.map(s=><b key={s.id} style={{left:`${s.entryX/CITY_WIDTH*100}%`}}/>)}</div></div>
    <button className="mc-connected-picker" onClick={()=>setPicker(true)} disabled={busy||!enabled||travelling}><img src={heroFace(hero)} alt=""/>TROCAR</button>
   </SystemDock>
   {near&&!routes&&!travelling&&!picker&&!destination&&<button className="mc-connected-use" onClick={interact} disabled={!enabled||busy}>{near.label} <small>E</small></button>}
@@ -140,6 +147,6 @@ export function HubCity({onEnter,enabled=true,onHome}:{onEnter:(id:Exclude<Scree
   {routes&&<section className="mc-connected-routes" aria-label="Destinos do trem"><header><strong>LINHA AURORA</strong><button onClick={()=>setRoutes(false)}>CANCELAR</button></header><p>Você desembarca no subsolo. Suba pela escadaria para chegar ao distrito.</p><div>{STATIONS.map(s=><button key={s.id} disabled={s.id===near?.id} onClick={()=>startJourney({x:s.trainX,z:70,elevation:SUBWAY_LEVEL},'underground',s,'ride',Math.max(2.5,Math.min(5,Math.abs(p.current.x-s.trainX)/900)))}>{s.name}<span>{s.id===near?.id?'ESTAÇÃO ATUAL':'VIAJAR →'}</span></button>)}</div></section>}
   {destination&&<CityDestination kind={destination} onClose={()=>setDestination(null)} onTravel={()=>{}} onEnter={id=>{if(systemUnlocked(game,id)){setDestination(null);transition(()=>onEnter(id));}}}/>}
   {picker&&<section className="mc-home-picker"><h2>EXPLORAR COM</h2><p>Mesmo robô na cidade, escadaria e plataforma.</p><div>{game.robots.map(r=><button key={r.id} onClick={()=>{setExplorer(r.id);setPicker(false);}}><img src={heroFace(r.id)} alt=""/><span>{ROBOT_MAP[r.id]?.name||r.id}<small>NV {r.level}</small></span></button>)}</div><button onClick={()=>setPicker(false)}>FECHAR</button></section>}
-  <ExplorationControls onMove={(x,z)=>{analog.current={x,z};}} onJump={jump} onJumpEnd={()=>{input.current.jumpHeld=false;}} onAttack={attack} onSpecial={special} cooldown={hud.cooldown} onInteract={interact} interactReady={!!near} disabled={busy||!enabled||picker||!!destination||routes||travelling}/>
+  <ExplorationControls onMove={onMove} onJump={jump} onJumpEnd={onJumpEnd} onAttack={attack} onSpecial={special} cooldown={hud.cooldown} onInteract={interact} interactReady={!!near} disabled={busy||!enabled||picker||!!destination||routes||travelling}/>
  </div>;
 }
